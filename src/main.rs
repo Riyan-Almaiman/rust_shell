@@ -107,7 +107,7 @@ fn execute(path: &OsStr, args: &Vec<String>) -> ShellAction{
 
   
     let mut process = std::process::Command::new(path)
-        .args(&args[1..])
+        .args(args)
         .spawn().expect("failed to spawn process");
 
      process.wait().expect("failed to wait for process");
