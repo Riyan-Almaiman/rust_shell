@@ -12,9 +12,9 @@ fn main() {
     
     io::stdin().read_line(&mut command).unwrap();
     
-    
+    let command = command.trim();
     match command {
-
+        "exit" => break,
         _ => println!("{}: command not found", command.trim())
     }}
 }
