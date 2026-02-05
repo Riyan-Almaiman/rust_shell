@@ -44,23 +44,22 @@ fn main() {
         if input.is_empty() {
             continue;
         }
-        let mut input_tokens =
-             input
-             .split_inclusive(" ")
+        let  ( command,  args) = input
+                .split_once(' ')
+                .unwrap_or((input, ""));
+            
+
+        let  input_tokens =
+             args
+             .split_whitespace()
             .map(String::from);
 
         let command_input = CommandInput {
-            command: CommandTypes::parse(&input_tokens.next().unwrap().trim()),
-            args: input_tokens.clone().filter_map(|c| if !c.trim().is_empty(){
-                Some(c.trim().to_string())
-            }else{
-                None
-            }
-            
-        ).collect(),
-            raw_args: input_tokens.collect()
+            command: CommandTypes::parse(command),
+            args: input_tokens.collect(),
+            raw_args: args.to_string()
         };
- 
+
 
         let action = match command_input.command {
 
