@@ -68,8 +68,8 @@ fn change_directories(path: &str) -> ShellAction {
 
         match env::set_current_dir(path){
             Ok(_) => (),
-            Err(e) => {
-                println!("{}", e);
+            Err(_) => {
+                println!("cd: {}: No such file or directory", path);
                 
             } 
         };
