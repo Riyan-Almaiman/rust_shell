@@ -1,5 +1,5 @@
 
-use std::{env, ffi::OsString, path::{self, Path, PathBuf}};
+use std::{env, ffi::OsString };
 use is_executable::is_executable;
 
 #[allow(unused_imports)]
@@ -12,26 +12,37 @@ enum ShellAction {
 struct CommandInput {
     command: CommandTypes,
     args: Vec<String>,
-    raw_args: String
+    raw_args: String,
 }
 
 enum CommandTypes {
     Exit, 
     Echo,
-    Type,
-    Unknown {name: String},
+    Type ,
+    Unknown {name: String, path: Option<OsString>},
 }
 
 impl CommandTypes {
 
-    fn parse( input: &str) -> CommandTypes {
+    fn parse( input: &str, paths: &OsString) -> CommandTypes {
         match input {
             "exit" => CommandTypes::Exit,
             "echo" => CommandTypes::Echo,
              "type"=> CommandTypes::Type,
-            _ => CommandTypes::Unknown{ name: input.to_string()},
+            _ => CommandTypes::Unknown{ name: input.to_string(), path: CommandTypes::find_exec(input, &paths)},
         }
     }
+    fn find_exec(command: &str,paths: &OsString) -> Option<OsString>{
+
+        let paths_split = env::split_paths(paths);
+        for path in paths_split {
+            let file = path.join(command );
+            if is_executable(&file){
+                return Some(file.into_os_string());
+            }
+        }
+        None
+}
 }
 
 fn main() {
@@ -63,9 +74,9 @@ fn main() {
             .map(String::from);
 
         let args = CommandInput {
-            command: CommandTypes::parse(command),
+            command: CommandTypes::parse(command, &paths),
             args: input_tokens.collect(),
-            raw_args: args.to_string()
+            raw_args: args.to_string(),
         };
 
 
@@ -74,7 +85,7 @@ fn main() {
             CommandTypes::Exit => ShellAction::Exit,
             CommandTypes::Type=> is_builtin(&args.args.get(0).unwrap_or(&"".to_string()),  &paths),
             CommandTypes::Echo =>  echo(&args.raw_args),
-            CommandTypes::Unknown { name } => command_not_found(&name)
+            CommandTypes::Unknown { name, .. } => command_not_found(&name)
         };
 
         match action {
@@ -85,18 +96,7 @@ fn main() {
   }
 }
 
-fn find_exec(command: &str,paths: &OsString) -> Option<OsString>{
 
-        let paths_split = env::split_paths(paths);
-        for path in paths_split {
-            let file = path.join(command );
-            if is_executable(&file){
-                return Some(file.into_os_string());
-            }
-        }
-        None
-
-}
 
 fn is_builtin(command: &String, paths: &OsString)->ShellAction{
     if command.is_empty(){
@@ -104,9 +104,9 @@ fn is_builtin(command: &String, paths: &OsString)->ShellAction{
         return ShellAction::Continue
     }
     
-    match CommandTypes::parse(command){
-        CommandTypes::Unknown { name } =>{
-            match find_exec(command, paths){
+    match CommandTypes::parse(command, paths){
+        CommandTypes::Unknown { name, path } =>{
+            match path{
                 Some(p) => {
              println!("{} is {}", name, p.to_str().unwrap());       
                 }
