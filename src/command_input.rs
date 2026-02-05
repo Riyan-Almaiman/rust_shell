@@ -20,6 +20,7 @@ impl<'a> CommandInput<'a> {
             "echo" => CommandType::Echo,
             "type" => CommandType::Type,
             "pwd" => CommandType::PWD,
+            "cd"=> CommandType::CD,
             _ => Self::parse_unknown(command, paths),
         };
 

@@ -1,8 +1,8 @@
 
 use std::{
-    env,
+    env::{self, set_current_dir},
     ffi::OsString,
-    path::{ PathBuf},
+    path::PathBuf,
 };
 mod command_input;
 #[allow(unused_imports)]
@@ -21,6 +21,7 @@ enum CommandType {
     Type,
     Exec { command: PathBuf, path: OsString },
     PWD,
+    CD,
     Unknown,
 }
 
@@ -50,7 +51,10 @@ fn main() {
             CommandType::Echo => command_input.echo(),
             CommandType::Exec { .. } => command_input.execute(),
             CommandType::PWD => print_working_directory(),
+            CommandType::CD => change_directories(command_input.raw_args),
             CommandType::Unknown => command_input.command_not_found(),
+            
+            
         };
 
         match action {
@@ -60,9 +64,19 @@ fn main() {
     }
 }
 
+fn change_directories(path: &str) -> ShellAction {
 
+        match env::set_current_dir(path){
+            Ok(_) => (),
+            Err(e) => {
+                println!("{}", e);
+                
+            } 
+        };
+        return ShellAction::Continue;
+    
+    }
  fn print_working_directory() -> ShellAction{
     println!("{}", env::current_dir().unwrap().display());
     ShellAction::Continue
-
 }
