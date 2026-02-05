@@ -1,11 +1,14 @@
 
 #[allow(unused_imports)]
 use std::io::{self, Write};
+enum ShellAction {
+    Continue,
+    Exit,
+}
 
 struct CommandInput {
     command: CommandTypes,
     args: Vec<String>
-
 }
 enum CommandTypes {
     Exit, 
@@ -27,8 +30,7 @@ impl CommandTypes {
 fn main() {
 
   
-    let mut exit = false;
-    while !exit {
+    loop {
         let mut input = String::new();
 
         print!("$ ");
@@ -49,23 +51,29 @@ fn main() {
         };
  
         
-        exit = match command_input.command {
+        let action = match command_input.command {
 
-            CommandTypes::Exit => true,
+            CommandTypes::Exit => ShellAction::Exit,
             CommandTypes::Echo =>  echo(&command_input.args),
             CommandTypes::Unknown { name } => command_not_found(&name)
+        };
+
+        match action {
+            ShellAction::Continue => {},
+            ShellAction::Exit => break,
+            
         }
   }
 }
 
-fn command_not_found(command: &str) -> bool {
+fn command_not_found(command: &str) -> ShellAction {
 
     println!("{}: command not found", command);
-    false
+    ShellAction::Continue
 }
 
-fn echo(message: &Vec<String> )-> bool{
+fn echo(message: &Vec<String> )-> ShellAction{
 
     println!("{}", message.join(" "));
-    false
+    ShellAction::Continue
 }
