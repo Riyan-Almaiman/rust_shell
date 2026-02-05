@@ -81,7 +81,7 @@ fn main() {
 
 fn is_builtin(command: &str)->ShellAction{
     match CommandTypes::parse(command){
-        CommandTypes::Unknown { name } => return command_not_found(&name),
+        CommandTypes::Unknown { name } =>println!("{}: not found", name),
         _ => println!("{} is a shell builtin", command)
     }
     ShellAction::Continue
