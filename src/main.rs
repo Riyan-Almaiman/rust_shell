@@ -51,7 +51,6 @@ fn main() {
     let key = "PATH";
     let paths =  std::env::var_os(key).unwrap_or(OsString::from(""));
     
-    println!("{}", paths.to_str().unwrap());
     loop {
         let mut input = String::new();
 
