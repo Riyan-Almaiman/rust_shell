@@ -10,39 +10,43 @@ enum ShellAction {
 }
 
 struct CommandInput {
-    command: CommandTypes,
+    command: CommandType,
     command_str: String,
     args: Vec<String>,
     raw_args: String,
+    
 }
 
-enum CommandTypes {
-    Exit, 
+enum CommandType {
+    Exit , 
     Echo,
     Type ,
+    Exec {path: OsString},
     Unknown,
 }
 
-impl CommandTypes {
+impl CommandType {
 
-    fn parse( input: &str) -> CommandTypes {
+    fn parse( input: &str, paths: &OsString) -> CommandType {
         match input {
-            "exit" => CommandTypes::Exit,
-            "echo" => CommandTypes::Echo,
-             "type"=> CommandTypes::Type,
-            _ => CommandTypes::Unknown,
+            "exit" => CommandType::Exit,
+            "echo" => CommandType::Echo,
+             "type"=> CommandType::Type,
+            _ => CommandType::parse_unknown(&input, &paths)
         }
     }
-    fn find_exec(command: &str,paths: &OsString) -> Option<OsString>{
+
+
+    fn parse_unknown(command: &str,paths: &OsString) -> CommandType{
 
         let paths_split = env::split_paths(paths);
         for path in paths_split {
             let file = path.join(command );
             if is_executable(&file){
-                return Some(file.into_os_string());
+                return CommandType::Exec {path: file.into_os_string()};
             }
         }
-        None
+        CommandType::Unknown
 }
 }
 
@@ -75,7 +79,7 @@ fn main() {
 
         let args = CommandInput {
             command_str: command.to_string(),
-            command: CommandTypes::parse(command),
+            command: CommandType::parse(command, &paths),
             args: input_tokens.collect(),
             raw_args: args.to_string(),
         };
@@ -83,10 +87,11 @@ fn main() {
 
         let action = match args.command {
 
-            CommandTypes::Exit => ShellAction::Exit,
-            CommandTypes::Type=> is_builtin(&args.args.get(0).unwrap_or(&"".to_string()),  &paths),
-            CommandTypes::Echo =>  echo(&args.raw_args),
-            CommandTypes::Unknown  => command_not_found(&args.command_str)
+            CommandType::Exit => ShellAction::Exit,
+            CommandType::Type=> type_command(&args.args.get(0).unwrap_or(&"".to_string()),  &paths),
+            CommandType::Echo =>  echo(&args.raw_args),
+            CommandType::Exec { path } => ShellAction::Continue,
+            CommandType::Unknown  => command_not_found(&args.command_str)
         };
 
         match action {
@@ -99,23 +104,15 @@ fn main() {
 
 
 
-fn is_builtin(command: &str, paths: &OsString)->ShellAction{
+fn type_command(command: &str, paths: &OsString)->ShellAction{
     if command.is_empty(){
         println!("No command found");
         return ShellAction::Continue
     }
     
-    match CommandTypes::parse(command){
-        CommandTypes::Unknown =>{
-            match CommandTypes::find_exec(command, paths)
-{
-                Some(p) => {
-             println!("{} is {}", command, p.to_str().unwrap());       
-                }
-                None => {
-                    println!("{}: not found", command);
-                }
-            }}
+    match CommandType::parse(command, paths){
+        CommandType::Unknown =>  println!("{}: not found", command),
+        CommandType::Exec { path } => println!("{} is {}", command, path.display()),
         _ => println!("{} is a shell builtin", command)
     }
     ShellAction::Continue
