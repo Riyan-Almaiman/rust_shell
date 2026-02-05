@@ -11,8 +11,8 @@ fn main() {
     io::stdin().read_line(&mut command).unwrap();
     
     
-    match (command) {
+    match command {
 
-        _ => println!("{} command not found", command.trim())
+        _ => println!("{}: command not found", command.trim())
     }
 }
