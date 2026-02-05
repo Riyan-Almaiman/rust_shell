@@ -9,6 +9,7 @@ enum ShellAction {
     Exit,
 }
 
+#[derive(Debug)]
 struct CommandInput {
     command: CommandType,
     command_str: String,
@@ -16,12 +17,13 @@ struct CommandInput {
     raw_args: String,
     
 }
+#[derive(Debug)]
 
 enum CommandType {
     Exit , 
     Echo,
     Type ,
-    Exec {path: OsString},
+    Exec {name: String, path: OsString},
     Unknown,
 }
 
@@ -43,7 +45,7 @@ impl CommandType {
         for path in paths_split {
             let file = path.join(command );
             if is_executable(&file){
-                return CommandType::Exec {path: file.into_os_string()};
+                return CommandType::Exec {name:command.to_string(), path: file.into_os_string()};
             }
         }
         CommandType::Unknown
@@ -77,21 +79,20 @@ fn main() {
              .split_whitespace()
             .map(String::from);
 
-        let args = CommandInput {
+        let command_input = CommandInput {
             command_str: command.to_string(),
             command: CommandType::parse(command, &paths),
             args: input_tokens.collect(),
             raw_args: args.to_string(),
         };
 
-
-        let action = match args.command {
+        let action = match command_input.command {
 
             CommandType::Exit => ShellAction::Exit,
-            CommandType::Type=> type_command(&args.args.get(0).unwrap_or(&"".to_string()),  &paths),
-            CommandType::Echo =>  echo(&args.raw_args),
-            CommandType::Exec { path } => execute(&path, &args.args),
-            CommandType::Unknown  => command_not_found(&args.command_str)
+            CommandType::Type=> type_command(&command_input.args.get(0).unwrap_or(&"".to_string()),  &paths),
+            CommandType::Echo =>  echo(&command_input.raw_args),
+            CommandType::Exec { .. } => execute( &command_input),
+            CommandType::Unknown  => command_not_found(&command_input.command_str)
         };
 
         match action {
@@ -103,11 +104,11 @@ fn main() {
 }
 
 
-fn execute(path: &OsStr, args: &Vec<String>) -> ShellAction{
+fn execute( command_input: &CommandInput) -> ShellAction{
 
   
-    let mut process = std::process::Command::new(&args[0])
-        .args(args)
+    let mut process = std::process::Command::new(command_input.command_str.clone())
+        .args(command_input.args.clone())
         .spawn().expect("failed to spawn process");
 
      process.wait().expect("failed to wait for process");
@@ -123,7 +124,7 @@ fn type_command(command: &str, paths: &OsStr)->ShellAction{
     
     match CommandType::parse(command, paths){
         CommandType::Unknown =>  println!("{}: not found", command),
-        CommandType::Exec { path } => println!("{} is {}", command, path.display()),
+        CommandType::Exec { path, name } => println!("{} is {}", name, path.display()),
         _ => println!("{} is a shell builtin", command)
     }
     ShellAction::Continue
