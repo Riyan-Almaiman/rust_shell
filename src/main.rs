@@ -90,7 +90,7 @@ fn main() {
             CommandType::Exit => ShellAction::Exit,
             CommandType::Type=> type_command(&args.args.get(0).unwrap_or(&"".to_string()),  &paths),
             CommandType::Echo =>  echo(&args.raw_args),
-            CommandType::Exec { path } => execute(&path, &args.args),
+            CommandType::Exec { path } => execute(&path, &args.args[1..]),
             CommandType::Unknown  => command_not_found(&args.command_str)
         };
 
@@ -102,7 +102,7 @@ fn main() {
   }
 }
 
-fn  try_execute(path: &OsStr, args: &Vec<String>) -> ShellAction{
+fn  try_execute(path: &OsStr, args: &[String]) -> ShellAction{
 
     let mut process = std::process::Command::new(path)
         .args(args)
@@ -117,7 +117,7 @@ fn  try_execute(path: &OsStr, args: &Vec<String>) -> ShellAction{
 }    return ShellAction::Continue;
 
 }
-fn execute(path: &OsStr, args: &Vec<String>) -> ShellAction{
+fn execute(path: &OsStr, args: &[String]) -> ShellAction{
 
   
     let mut process = std::process::Command::new(path)
