@@ -1,4 +1,7 @@
 
+use std::{env, ffi::OsString, path::{self, Path, PathBuf}};
+use is_executable::is_executable;
+
 #[allow(unused_imports)]
 use std::io::{self, Write};
 enum ShellAction {
@@ -33,7 +36,10 @@ impl CommandTypes {
 
 fn main() {
 
-  
+    let key = "PATH";
+    let paths =  std::env::var_os(key).unwrap_or(OsString::from(""));
+    
+    
     loop {
         let mut input = String::new();
 
@@ -66,7 +72,7 @@ fn main() {
         let action = match args.command {
 
             CommandTypes::Exit => ShellAction::Exit,
-            CommandTypes::Type=> is_builtin(&args.args.get(0).unwrap_or(&"".to_string())),
+            CommandTypes::Type=> is_builtin(&args.args.get(0).unwrap_or(&"".to_string()),  &paths),
             CommandTypes::Echo =>  echo(&args.raw_args),
             CommandTypes::Unknown { name } => command_not_found(&name)
         };
@@ -79,9 +85,35 @@ fn main() {
   }
 }
 
-fn is_builtin(command: &str)->ShellAction{
+fn find_exec(command: &str,paths: &OsString) -> Option<OsString>{
+
+        let paths_split = env::split_paths(paths);
+        for path in paths_split {
+            let file = path.join(command );
+            if is_executable(&file){
+                return Some(file.into_os_string());
+            }
+        }
+        None
+
+}
+
+fn is_builtin(command: &String, paths: &OsString)->ShellAction{
+    if command.is_empty(){
+        println!("No command found");
+        return ShellAction::Continue
+    }
+    
     match CommandTypes::parse(command){
-        CommandTypes::Unknown { name } =>println!("{}: not found", name),
+        CommandTypes::Unknown { name } =>{
+            match find_exec(command, paths){
+                Some(p) => {
+             println!("{} is {}", name, p.to_str().unwrap());       
+                }
+                None => {
+                    println!("{}: not found", name);
+                }
+            }}
         _ => println!("{} is a shell builtin", command)
     }
     ShellAction::Continue
