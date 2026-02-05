@@ -11,6 +11,7 @@ enum ShellAction {
 
 struct CommandInput {
     command: CommandTypes,
+    command_str: String,
     args: Vec<String>,
     raw_args: String,
 }
@@ -19,17 +20,17 @@ enum CommandTypes {
     Exit, 
     Echo,
     Type ,
-    Unknown {name: String, path: Option<OsString>},
+    Unknown,
 }
 
 impl CommandTypes {
 
-    fn parse( input: &str, paths: &OsString) -> CommandTypes {
+    fn parse( input: &str) -> CommandTypes {
         match input {
             "exit" => CommandTypes::Exit,
             "echo" => CommandTypes::Echo,
              "type"=> CommandTypes::Type,
-            _ => CommandTypes::Unknown{ name: input.to_string(), path: CommandTypes::find_exec(input, &paths)},
+            _ => CommandTypes::Unknown,
         }
     }
     fn find_exec(command: &str,paths: &OsString) -> Option<OsString>{
@@ -50,7 +51,7 @@ fn main() {
     let key = "PATH";
     let paths =  std::env::var_os(key).unwrap_or(OsString::from(""));
     
-    
+    println!("{}", paths.to_str().unwrap());
     loop {
         let mut input = String::new();
 
@@ -74,7 +75,8 @@ fn main() {
             .map(String::from);
 
         let args = CommandInput {
-            command: CommandTypes::parse(command, &paths),
+            command_str: command.to_string(),
+            command: CommandTypes::parse(command),
             args: input_tokens.collect(),
             raw_args: args.to_string(),
         };
@@ -85,7 +87,7 @@ fn main() {
             CommandTypes::Exit => ShellAction::Exit,
             CommandTypes::Type=> is_builtin(&args.args.get(0).unwrap_or(&"".to_string()),  &paths),
             CommandTypes::Echo =>  echo(&args.raw_args),
-            CommandTypes::Unknown { name, .. } => command_not_found(&name)
+            CommandTypes::Unknown  => command_not_found(&args.command_str)
         };
 
         match action {
@@ -98,20 +100,21 @@ fn main() {
 
 
 
-fn is_builtin(command: &String, paths: &OsString)->ShellAction{
+fn is_builtin(command: &str, paths: &OsString)->ShellAction{
     if command.is_empty(){
         println!("No command found");
         return ShellAction::Continue
     }
     
-    match CommandTypes::parse(command, paths){
-        CommandTypes::Unknown { name, path } =>{
-            match path{
+    match CommandTypes::parse(command){
+        CommandTypes::Unknown =>{
+            match CommandTypes::find_exec(command, paths)
+{
                 Some(p) => {
-             println!("{} is {}", name, p.to_str().unwrap());       
+             println!("{} is {}", command, p.to_str().unwrap());       
                 }
                 None => {
-                    println!("{}: not found", name);
+                    println!("{}: not found", command);
                 }
             }}
         _ => println!("{} is a shell builtin", command)
