@@ -15,6 +15,7 @@ struct CommandInput {
 enum CommandTypes {
     Exit, 
     Echo,
+    Type,
     Unknown {name: String},
 }
 
@@ -24,6 +25,7 @@ impl CommandTypes {
         match input {
             "exit" => CommandTypes::Exit,
             "echo" => CommandTypes::Echo,
+             "type"=> CommandTypes::Type,
             _ => CommandTypes::Unknown{ name: input.to_string()},
         }
     }
@@ -54,17 +56,18 @@ fn main() {
              .split_whitespace()
             .map(String::from);
 
-        let command_input = CommandInput {
+        let args = CommandInput {
             command: CommandTypes::parse(command),
             args: input_tokens.collect(),
             raw_args: args.to_string()
         };
 
 
-        let action = match command_input.command {
+        let action = match args.command {
 
             CommandTypes::Exit => ShellAction::Exit,
-            CommandTypes::Echo =>  echo(&command_input.raw_args),
+            CommandTypes::Type=> is_builtin(&args.args.get(0).unwrap_or(&"".to_string())),
+            CommandTypes::Echo =>  echo(&args.raw_args),
             CommandTypes::Unknown { name } => command_not_found(&name)
         };
 
@@ -76,6 +79,13 @@ fn main() {
   }
 }
 
+fn is_builtin(command: &str)->ShellAction{
+    match CommandTypes::parse(command){
+        CommandTypes::Unknown { name } => return command_not_found(&name),
+        _ => println!("{} is a shell builtin", command)
+    }
+    ShellAction::Continue
+}
 fn command_not_found(command: &str) -> ShellAction {
 
     println!("{}: command not found", command);
