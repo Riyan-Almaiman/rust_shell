@@ -1,6 +1,6 @@
 
-use std::{env, ffi::OsString };
-use is_executable::is_executable;
+use std::{env, ffi::{OsStr, OsString} };
+use is_executable::{is_executable};
 
 #[allow(unused_imports)]
 use std::io::{self, Write};
@@ -27,7 +27,7 @@ enum CommandType {
 
 impl CommandType {
 
-    fn parse( input: &str, paths: &OsString) -> CommandType {
+    fn parse( input: &str, paths: &OsStr) -> CommandType {
         match input {
             "exit" => CommandType::Exit,
             "echo" => CommandType::Echo,
@@ -37,7 +37,7 @@ impl CommandType {
     }
 
 
-    fn parse_unknown(command: &str,paths: &OsString) -> CommandType{
+    fn parse_unknown(command: &str,paths:&OsStr) -> CommandType{
 
         let paths_split = env::split_paths(paths);
         for path in paths_split {
@@ -90,7 +90,7 @@ fn main() {
             CommandType::Exit => ShellAction::Exit,
             CommandType::Type=> type_command(&args.args.get(0).unwrap_or(&"".to_string()),  &paths),
             CommandType::Echo =>  echo(&args.raw_args),
-            CommandType::Exec { path } => ShellAction::Continue,
+            CommandType::Exec { path } => execute(&path, &args.args),
             CommandType::Unknown  => command_not_found(&args.command_str)
         };
 
@@ -102,9 +102,34 @@ fn main() {
   }
 }
 
+fn  try_execute(path: &OsStr, args: &Vec<String>) -> ShellAction{
 
+    let mut process = std::process::Command::new(path)
+        .args(args)
+        .spawn().expect("failed to spawn process");
 
-fn type_command(command: &str, paths: &OsString)->ShellAction{
+    match process.try_wait() {
+        Ok(Some(status)) => println!("exited with: {status}"),
+        Ok(None) => {
+            process.wait().expect("command wasn't running");
+        }
+        Err(e) => println!("error attempting to wait: {e}"),
+}    return ShellAction::Continue;
+
+}
+fn execute(path: &OsStr, args: &Vec<String>) -> ShellAction{
+
+  
+    let mut process = std::process::Command::new(path)
+        .args(args)
+        .spawn().expect("failed to spawn process");
+
+     process.wait().expect("failed to wait for process");
+
+    return ShellAction::Continue;
+
+}
+fn type_command(command: &str, paths: &OsStr)->ShellAction{
     if command.is_empty(){
         println!("No command found");
         return ShellAction::Continue
