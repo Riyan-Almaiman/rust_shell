@@ -1,8 +1,7 @@
-
 use std::{
     env::{self, set_current_dir},
     ffi::OsString,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 mod command_input;
 #[allow(unused_imports)]
@@ -13,8 +12,7 @@ enum ShellAction {
 }
 use command_input::CommandInput;
 
-#[derive(PartialEq)]
-#[derive(Debug)]
+#[derive(PartialEq, Debug)]
 enum CommandType {
     Exit,
     Echo,
@@ -53,8 +51,6 @@ fn main() {
             CommandType::PWD => print_working_directory(),
             CommandType::CD => change_directories(command_input.raw_args),
             CommandType::Unknown => command_input.command_not_found(),
-            
-            
         };
 
         match action {
@@ -65,18 +61,31 @@ fn main() {
 }
 
 fn change_directories(path: &str) -> ShellAction {
+   if path == "~" {
+        let home = env::home_dir();
+        match home {
+            Some(p) => {set_dir(&p);
+            return ShellAction::Continue},
+            None =>  {
+                return ShellAction::Continue;
+            }
 
-        match env::set_current_dir(path){
-            Ok(_) => (),
-            Err(_) => {
-                println!("cd: {}: No such file or directory", path);
-                
-            } 
-        };
-        return ShellAction::Continue;
+        }
     
-    }
- fn print_working_directory() -> ShellAction{
+    };
+     set_dir(&PathBuf::new().join(&path));
+    return ShellAction::Continue;
+}
+fn set_dir(path: &PathBuf){
+
+   match env::set_current_dir(path) {
+        Ok(_) => (),
+        Err(_) => {
+            println!("cd: {}: No such file or directory", path.display());
+        }
+    };
+}
+fn print_working_directory() -> ShellAction {
     println!("{}", env::current_dir().unwrap().display());
     ShellAction::Continue
 }
