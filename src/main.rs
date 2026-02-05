@@ -1,8 +1,28 @@
-use std::{fs::read_dir, io::Read};
+
 #[allow(unused_imports)]
 use std::io::{self, Write};
 
+struct CommandInput {
+    command: CommandTypes,
+    args: Vec<String>
 
+}
+enum CommandTypes {
+    Exit, 
+    Echo,
+    Unknown {name: String},
+}
+
+impl CommandTypes {
+
+    fn parse( input: &str) -> CommandTypes {
+        match input {
+            "exit" => CommandTypes::Exit,
+            "echo" => CommandTypes::Echo,
+            _ => CommandTypes::Unknown{ name: input.to_string()},
+        }
+    }
+}
 
 fn main() {
 
@@ -17,21 +37,23 @@ fn main() {
         io::stdin().read_line(&mut input).unwrap();
         let input = input.trim();
 
-        if input.trim().is_empty() {
+        if input.is_empty() {
             println!("No Command Found");
             continue;
         }
-        let command_string: Vec<String> = input.split(' ').map(String::from).collect();
- 
-    
-        let command = &command_string[0];
-        let command_args = &command_string[1..];
-        
-        exit = match command.as_str() {
+        let mut command_string = input.split(' ');
 
-            "exit" => true,
-            "echo" =>  echo(command_args),
-            _ => command_not_found(command)
+        let command_input = CommandInput {
+            command: CommandTypes::parse(command_string.next().unwrap()),
+            args: command_string.map(String::from).collect()
+        };
+ 
+        
+        exit = match command_input.command {
+
+            CommandTypes::Exit => true,
+            CommandTypes::Echo =>  echo(&command_input.args),
+            CommandTypes::Unknown { name } => command_not_found(&name)
         }
   }
 }
@@ -42,8 +64,8 @@ fn command_not_found(command: &str) -> bool {
     false
 }
 
-fn echo(message: &[String] )-> bool{
+fn echo(message: &Vec<String> )-> bool{
 
     println!("{}", message.join(" "));
-    true
+    false
 }
