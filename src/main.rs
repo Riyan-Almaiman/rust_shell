@@ -8,8 +8,10 @@ enum ShellAction {
 
 struct CommandInput {
     command: CommandTypes,
-    args: Vec<String>
+    args: Vec<String>,
+    raw_args: String
 }
+
 enum CommandTypes {
     Exit, 
     Echo,
@@ -40,21 +42,30 @@ fn main() {
         let input = input.trim();
 
         if input.is_empty() {
-            println!("No Command Found");
             continue;
         }
-        let mut command_string = input.split(' ');
+        let mut input_tokens =
+             input
+             .split_inclusive(" ")
+            .map(String::from);
 
         let command_input = CommandInput {
-            command: CommandTypes::parse(command_string.next().unwrap()),
-            args: command_string.map(String::from).collect()
+            command: CommandTypes::parse(&input_tokens.next().unwrap().trim()),
+            args: input_tokens.clone().filter_map(|c| if !c.trim().is_empty(){
+                Some(c.trim().to_string())
+            }else{
+                None
+            }
+            
+        ).collect(),
+            raw_args: input_tokens.collect()
         };
  
-        
+
         let action = match command_input.command {
 
             CommandTypes::Exit => ShellAction::Exit,
-            CommandTypes::Echo =>  echo(&command_input.args),
+            CommandTypes::Echo =>  echo(&command_input.raw_args),
             CommandTypes::Unknown { name } => command_not_found(&name)
         };
 
@@ -72,8 +83,8 @@ fn command_not_found(command: &str) -> ShellAction {
     ShellAction::Continue
 }
 
-fn echo(message: &Vec<String> )-> ShellAction{
+fn echo(message: &str )-> ShellAction{
 
-    println!("{}", message.join(" "));
+    println!("{}", message);
     ShellAction::Continue
 }
