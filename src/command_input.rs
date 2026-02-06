@@ -22,22 +22,25 @@ pub struct CommandInput<'a> {
             match start {
                 None => start = Some(i + 1), // opening '
                 Some(begin) => {
-                    if begin != i{
+                    if begin != i { 
+                        if input.chars().nth(i+1).unwrap_or('\'') != '\'' &&  input.chars().nth(i-1).unwrap_or('\'') != '\''{
                         result.push(input[begin..i].to_string()); // closing '
-
+                        start = None;
+                    }
                     }
                     else{
-                        input.to_string().remove(i+1);
+                       
+                        start = None;
                     }
-                    start = None;
+                    
                 }
             }
-        }
+        }else{
         match start {
             
 
             None=> match token{
-                None=> if !c.is_whitespace() {token = Some(String::from(c))},
+                None=> if !c.is_whitespace() {token = Some(String::from(c)); println!("not whitespace {}", c)},
                 Some(  ref mut current) =>  match c.is_whitespace() || c== '\''  {
                     false=> {current.push(c);     },
                     true=>{result.push(current.trim().to_string()); token = None;}
@@ -45,7 +48,7 @@ pub struct CommandInput<'a> {
             },
             Some(_)=>()
         };
-    }
+    }}
     match token {
         None=> match start {
             None=> (),
@@ -55,6 +58,7 @@ pub struct CommandInput<'a> {
             Some(l)=> result.push(l.trim().to_string())
 
 }
+    println!("{result:?}");
 
     result
 }
