@@ -52,13 +52,12 @@ pub struct CommandInput<'a> {
     match token {
         None=> match start {
             None=> (),
-            Some(l)=>{result.push(input[l..].to_string());
+            Some(l)=>{result.push(format!("'{}", input[l..].to_string()));
         }
     },
             Some(l)=> result.push(l.trim().to_string())
 
 }
-    // println!("{result:?}");
 
     result
 }
