@@ -40,7 +40,7 @@ pub struct CommandInput<'a> {
             
 
             None=> match token{
-                None=> if !c.is_whitespace() {token = Some(String::from(c)); println!("not whitespace {}", c)},
+                None=> if !c.is_whitespace() {token = Some(String::from(c)); },
                 Some(  ref mut current) =>  match c.is_whitespace() || c== '\''  {
                     false=> {current.push(c);     },
                     true=>{result.push(current.trim().to_string()); token = None;}
@@ -58,7 +58,6 @@ pub struct CommandInput<'a> {
             Some(l)=> result.push(l.trim().to_string())
 
 }
-    println!("{result:?}");
 
     result
 }
