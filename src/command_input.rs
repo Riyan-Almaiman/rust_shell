@@ -1,11 +1,11 @@
 use crate::{CommandType, ShellAction};
 use is_executable::is_executable;
+use std::iter::Peekable;
 use std::str::CharIndices;
 use std::{
     env,
     path::{self, PathBuf},
 };
-use std::iter::Peekable;
 
 #[derive(Debug)]
 pub struct CommandInput<'a> {
@@ -16,37 +16,38 @@ pub struct CommandInput<'a> {
     pub paths: &'a [PathBuf],
 }
 
-fn peek_iter( iter:  &mut Peekable<CharIndices>) -> Option<char>{
-    if let Some(&(_, ch)) = iter.peek() {
-        return Some(ch)
+fn parse_escape(iter: &mut Peekable<CharIndices>, token: &mut Option<String>) {
+    if let Some(&(_, next_c)) = iter.peek() {
+        add_to_token(token, next_c);
+        iter.next();
     }
-    None
 }
 fn parse_delimiter(iter: &mut Peekable<CharIndices>, delimiter: char, tokens: &mut Vec<String>) {
-    let mut token = String::new();
+    let mut token: Option<String> = None;
 
     while let Some((_, c)) = iter.next() {
+        if c == '\\' {
+            parse_escape(iter, &mut token);
+            continue
+        }
         if c == delimiter {
             if let Some(&(_, next_c)) = iter.peek() {
                 if next_c == delimiter {
-
                     iter.next();
                     continue;
                 }
             }
-            if !token.is_empty() {
-                tokens.push(token);
-            }
+            push_token(&mut token, tokens);
+
             return;
         }
-        token.push(c);
+        add_to_token(&mut token, c);
     }
 }
-fn add_to_token(token: &mut Option<String>, value: char){
-    token.get_or_insert(value.to_string()).push(value);
-
+fn add_to_token(token: &mut Option<String>, value: char) {
+    token.get_or_insert_with(String::new).push(value);
 }
-fn push_token(token: &mut Option<String> , tokens: &mut Vec<String>){
+fn push_token(token: &mut Option<String>, tokens: &mut Vec<String>) {
     if let Some(t) = token.take() {
         tokens.push(t);
     }
@@ -58,6 +59,10 @@ fn parse_input(input: &str) -> Vec<String> {
     let token_delimiters = ['"', '\''];
     let mut iter = input.char_indices().peekable();
     while let Some((_, c)) = iter.next() {
+        if c == '\\' {
+            parse_escape(&mut iter, &mut token);
+            continue;
+        }
         if token_delimiters.contains(&c) {
             parse_delimiter(&mut iter, c, &mut tokens);
             continue;
@@ -66,7 +71,7 @@ fn parse_input(input: &str) -> Vec<String> {
             push_token(&mut token, &mut tokens);
             continue;
         }
-        token.get_or_insert_with(String::new).push(c);
+        add_to_token(&mut token, c);
     }
     push_token(&mut token, &mut tokens);
     tokens
@@ -90,7 +95,6 @@ impl<'a> CommandInput<'a> {
             args: parse_input(args),
             raw_args: args.to_string(),
         }
-
     }
     pub fn get_exe_command(command: &str) -> PathBuf {
         if cfg!(target_os = "windows") && !command.ends_with(".exe") {
