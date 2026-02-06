@@ -22,7 +22,7 @@ fn parse_escape(iter: &mut Peekable<CharIndices>, token: &mut Option<String>) {
         iter.next();
     }
 }
-fn parse_delimiter(iter: &mut Peekable<CharIndices>, delimiter: char, tokens: &mut Vec<String>) {
+fn parse_delimiter(iter: &mut Peekable<CharIndices>, delimiter: char) -> Option<String> {
     let mut token: Option<String> = None;
 
     while let Some((_, c)) = iter.next() {
@@ -34,12 +34,15 @@ fn parse_delimiter(iter: &mut Peekable<CharIndices>, delimiter: char, tokens: &m
                     continue;
                 }
             }
-            push_token(&mut token, tokens);
+            if token.is_some(){
+                return token;
+            }
 
-            return;
+            return None;
         }
         add_to_token(&mut token, c);
     }
+    None
 }
 fn add_to_token(token: &mut Option<String>, value: char) {
     token.get_or_insert_with(String::new).push(value);
@@ -61,7 +64,17 @@ fn parse_input(input: &str) -> Vec<String> {
             continue;
         }
         if token_delimiters.contains(&c) {
-            parse_delimiter(&mut iter, c, &mut tokens);
+          
+            match parse_delimiter(&mut iter, c) {
+                Some(t) => {
+                        push_token(&mut token, &mut tokens);
+                        push_token(&mut Some(t), &mut tokens);
+
+
+                }
+                None => (),
+            }
+
             continue;
         }
         if c == ' ' {
