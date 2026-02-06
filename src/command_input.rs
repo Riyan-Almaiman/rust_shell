@@ -26,7 +26,6 @@ fn parse_delimiter(iter: &mut Peekable<CharIndices>, delimiter: char, tokens: &m
     let mut token = String::new();
 
     while let Some((_, c)) = iter.next() {
-        println!("{}", c.to_string());
         if c == delimiter {
             if let Some(&(_, next_c)) = iter.peek() {
                 if next_c == delimiter {
@@ -70,7 +69,6 @@ fn parse_input(input: &str) -> Vec<String> {
         token.get_or_insert_with(String::new).push(c);
     }
     push_token(&mut token, &mut tokens);
-    println!("{:?}", tokens);
     tokens
 }
 
