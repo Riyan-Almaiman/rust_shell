@@ -24,7 +24,7 @@ pub struct CommandInput<'a> {
                 Some(begin) => {
                     if begin != i { 
                         if input.chars().nth(i+1).unwrap_or('\'') != '\'' &&  input.chars().nth(i-1).unwrap_or('\'') != '\''{
-                        result.push(input[begin..i].to_string()); // closing '
+                        result.push(format!("'{}'", input[begin..i].to_string())); // closing '
                         start = None;
                     }
                     }
@@ -58,6 +58,7 @@ pub struct CommandInput<'a> {
             Some(l)=> result.push(l.trim().to_string())
 
 }
+    // println!("{result:?}");
 
     result
 }
