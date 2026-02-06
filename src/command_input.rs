@@ -67,8 +67,8 @@ fn parse_input(input: &str) -> Vec<String> {
 
             match parse_delimiter(&mut iter, c) {
                 Some(t) => {
+                    token.get_or_insert_with(String::new).push_str(&t);
                         push_token(&mut token, &mut tokens);
-                        push_token(&mut Some(t), &mut tokens);
 
 
                 }
@@ -84,6 +84,7 @@ fn parse_input(input: &str) -> Vec<String> {
         add_to_token(&mut token, c);
     }
     push_token(&mut token, &mut tokens);
+    // println!("args {:?}", tokens);
 
     tokens
 }
