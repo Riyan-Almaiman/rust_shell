@@ -24,7 +24,7 @@ pub struct CommandInput<'a> {
                 Some(begin) => {
                     if begin != i { 
                         if input.chars().nth(i+1).unwrap_or('\'') != '\'' &&  input.chars().nth(i-1).unwrap_or('\'') != '\''{
-                        result.push(format!("'{}'", input[begin..i].to_string())); // closing '
+                        result.push(input[begin..i].to_string()); // closing '
                         start = None;
                     }
                     }
@@ -52,13 +52,12 @@ pub struct CommandInput<'a> {
     match token {
         None=> match start {
             None=> (),
-            Some(l)=>{result.push(format!("'{}", input[l..].to_string()));
+            Some(l)=>{result.push(  input[l..].replace('\'', "").to_string());
         }
     },
             Some(l)=> result.push(l.trim().to_string())
 
 }
-
     result
 }
 impl<'a> CommandInput<'a> {
@@ -110,6 +109,9 @@ impl<'a> CommandInput<'a> {
             CommandType::Exec { command, path } => (command, path),
             _ => return ShellAction::Continue
         };
+        for arg in &self.args {
+}
+
         let mut process = std::process::Command::new(cmd)
             .args(&self.args)
             .spawn()
