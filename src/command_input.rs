@@ -5,6 +5,7 @@ use std::{
     env,
     path::{self, PathBuf},
 };
+use std::iter::Peekable;
 
 #[derive(Debug)]
 pub struct CommandInput<'a> {
@@ -15,11 +16,25 @@ pub struct CommandInput<'a> {
     pub paths: &'a [PathBuf],
 }
 
-fn parse_delimiter(iter: &mut CharIndices, delimiter: char, tokens: &mut Vec<String>) {
+fn peek_iter( iter:  &mut Peekable<CharIndices>) -> Option<char>{
+    if let Some(&(_, ch)) = iter.peek() {
+        return Some(ch)
+    }
+    None
+}
+fn parse_delimiter(iter: &mut Peekable<CharIndices>, delimiter: char, tokens: &mut Vec<String>) {
     let mut token = String::new();
-    for (_, c) in iter.by_ref() {
+
+    while let Some((_, c)) = iter.next() {
         if c == delimiter {
-            if (!token.is_empty()) {
+            if let Some(&(_, next_c)) = iter.peek() {
+                if next_c == delimiter {
+
+                    iter.next();
+                    continue;
+                }
+            }
+            if !token.is_empty() {
                 tokens.push(token);
             }
             return;
@@ -41,7 +56,7 @@ fn parse_input(input: &str) -> Vec<String> {
     let mut token: Option<String> = None;
 
     let token_delimiters = ['"', '\''];
-    let mut iter = input.char_indices();
+    let mut iter = input.char_indices().peekable();
     while let Some((_, c)) = iter.next() {
         if token_delimiters.contains(&c) {
             push_token(&mut token, &mut tokens);
