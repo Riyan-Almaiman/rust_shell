@@ -4,6 +4,8 @@ use std::{
     path::{Path, PathBuf},
 };
 mod command_input;
+mod bit_flags;
+
 #[allow(unused_imports)]
 use std::io::{self, Write};
 enum ShellAction {
@@ -28,6 +30,7 @@ fn main() {
     let paths: Vec<PathBuf> =
         env::split_paths(&std::env::var_os(key).unwrap_or(OsString::from(""))).collect();
 
+    let l  = key.len();
     loop {
         let mut input = String::new();
 
