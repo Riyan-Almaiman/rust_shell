@@ -13,7 +13,6 @@ pub struct CommandInput<'a> {
     
 }
    fn extract_single_quoted(input: &str) -> Vec<String> {
-    let input = input.replace("''", "").trim().to_string();
     let mut result: Vec<String> = Vec::new();
     let mut start: Option<usize> = None;
     let mut found = false;
@@ -27,6 +26,9 @@ pub struct CommandInput<'a> {
                         result.push(input[begin..i].to_string()); // closing '
 
                     }
+                    else{
+                        input.to_string().remove(i+1);
+                    }
                     start = None;
                 }
             }
@@ -36,7 +38,7 @@ pub struct CommandInput<'a> {
 
             None=> match token{
                 None=> if !c.is_whitespace() {token = Some(String::from(c))},
-                Some(  ref mut current) =>  match c.is_whitespace()  {
+                Some(  ref mut current) =>  match c.is_whitespace() || c== '\''  {
                     false=> {current.push(c);     },
                     true=>{result.push(current.trim().to_string()); token = None;}
                 }
