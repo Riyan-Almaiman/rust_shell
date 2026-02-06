@@ -55,7 +55,6 @@ fn parse_input(input: &str) -> Vec<String> {
         token.get_or_insert_with(String::new).push(c);
     }
     push_token(&mut token, &mut tokens);
-    println!("{:?}",tokens);
     tokens
 }
 
