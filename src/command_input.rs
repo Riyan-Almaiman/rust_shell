@@ -53,7 +53,6 @@ pub struct CommandInput<'a> {
             Some(l)=> result.push(l.trim().to_string())
 
 }
-    println!("{result:?}");
 
     result
 }
