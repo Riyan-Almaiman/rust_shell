@@ -26,10 +26,7 @@ fn parse_delimiter(iter: &mut Peekable<CharIndices>, delimiter: char, tokens: &m
     let mut token: Option<String> = None;
 
     while let Some((_, c)) = iter.next() {
-        if c == '\\' {
-            parse_escape(iter, &mut token);
-            continue
-        }
+
         if c == delimiter {
             if let Some(&(_, next_c)) = iter.peek() {
                 if next_c == delimiter {
