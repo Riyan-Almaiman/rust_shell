@@ -24,9 +24,13 @@ fn parse_escape(iter: &mut Peekable<CharIndices>, token: &mut Option<String>) {
 }
 fn parse_delimiter(iter: &mut Peekable<CharIndices>, delimiter: char) -> Option<String> {
     let mut token: Option<String> = None;
+    let is_double_quote = delimiter == '"';
 
     while let Some((_, c)) = iter.next() {
-
+        if(is_double_quote && c == '\\'){
+            parse_escape(iter, &mut token);
+            continue
+        }
         if c == delimiter {
             if let Some(&(_, next_c)) = iter.peek() {
                 if next_c == delimiter {
@@ -67,9 +71,16 @@ fn parse_input(input: &str) -> Vec<String> {
 
             match parse_delimiter(&mut iter, c) {
                 Some(t) => {
-                    token.get_or_insert_with(String::new).push_str(&t);
-                        push_token(&mut token, &mut tokens);
-
+                    match &token {
+                        Some (tok) => {
+                            token.get_or_insert_with(String::new).push_str(&t);
+                            push_token(&mut token, &mut tokens);
+                        }
+                        None => {
+                            token.get_or_insert_with(String::new).push_str(&t);
+                        }
+                    }
+                    
 
                 }
                 None => (),
