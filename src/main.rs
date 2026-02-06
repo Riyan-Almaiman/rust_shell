@@ -41,7 +41,7 @@ fn main() {
             continue;
         }
 
-        let command_input = CommandInput::new(input, &paths);
+        let command_input = CommandInput::new(input.to_string(), &paths);
 
         let action = match command_input.command_type {
             CommandType::Exit => ShellAction::Exit,
@@ -49,7 +49,7 @@ fn main() {
             CommandType::Echo => command_input.echo(),
             CommandType::Exec { .. } => command_input.execute(),
             CommandType::PWD => print_working_directory(),
-            CommandType::CD => change_directories(command_input.raw_args),
+            CommandType::CD => change_directories(&command_input.raw_args),
             CommandType::Unknown => command_input.command_not_found(),
         };
 

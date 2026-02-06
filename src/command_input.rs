@@ -6,15 +6,62 @@ use is_executable::is_executable;
 #[derive(Debug)]
 pub struct CommandInput<'a> {
     pub command_type: CommandType,
-   pub command_str: &'a str,
-   pub args: Vec<&'a str>,
-    pub raw_args: &'a str,
+   pub command_str: String,
+   pub args: Vec<String>,
+    pub raw_args: String,
     pub paths: &'a [PathBuf]
     
 }
+   fn extract_single_quoted(input: &str) -> Vec<String> {
+    let input = input.replace("''", "").trim().to_string();
+    let mut result: Vec<String> = Vec::new();
+    let mut start: Option<usize> = None;
+    let mut found = false;
+    let mut token: Option<String> = None;
+    for (i, c) in input.char_indices() {
+        if c == '\'' {
+            match start {
+                None => start = Some(i + 1), // opening '
+                Some(begin) => {
+                    if begin != i{
+                        result.push(input[begin..i].to_string()); // closing '
+
+                    }
+                    start = None;
+                }
+            }
+        }
+        match start {
+            
+
+            None=> match token{
+                None=> if !c.is_whitespace() {token = Some(String::from(c))},
+                Some(  ref mut current) =>  match c.is_whitespace()  {
+                    false=> {current.push(c);     },
+                    true=>{result.push(current.trim().to_string()); token = None;}
+                }
+            },
+            Some(_)=>()
+        };
+    }
+    match token {
+        None=> match start {
+            None=> (),
+            Some(l)=>{result.push(input[l..].to_string());
+        }
+    },
+            Some(l)=> result.push(l.trim().to_string())
+
+}
+    println!("{result:?}");
+
+    result
+}
 impl<'a> CommandInput<'a> {
-    pub fn new(input: &'a str, paths: &'a [PathBuf]) -> Self {
-        let (command, args) = input.split_once(' ').unwrap_or((input, ""));
+ 
+
+    pub fn new(input: String, paths: &'a [PathBuf]) -> Self {
+        let (command, args) = input.split_once(' ').unwrap_or((&input, ""));
         let cmd = match command {
             "exit" => CommandType::Exit,
             "echo" => CommandType::Echo,
@@ -23,13 +70,12 @@ impl<'a> CommandInput<'a> {
             "cd"=> CommandType::CD,
             _ => Self::parse_unknown(command, paths),
         };
-
          Self {
-            paths: paths,
+            paths,
             command_type: cmd,
-            command_str: command,
-            args: args.split_whitespace().collect(),
-            raw_args: args,
+            command_str: command.to_string(),
+            args:extract_single_quoted(args),
+            raw_args: args.to_string(),
         }
   
     }
@@ -70,7 +116,7 @@ impl<'a> CommandInput<'a> {
         return ShellAction::Continue;
     }
 pub fn echo(&self ) -> ShellAction {
-    println!("{}", self.raw_args);
+    println!("{}", self.args.join(" ").replace("'", ""));
     ShellAction::Continue
 }
 
@@ -80,7 +126,7 @@ pub fn type_command(&self) -> ShellAction {
         println!("No command found");
         return ShellAction::Continue;
     }
-    let command_input = CommandInput::new(cmd, &self.paths);
+    let command_input = CommandInput::new(cmd.to_string(), &self.paths);
     match command_input.command_type {
         CommandType::Unknown => println!("{}: not found", cmd),
         CommandType::Exec { path, .. } => println!("{} is {}", cmd, path.display()),
