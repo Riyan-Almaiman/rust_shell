@@ -1,43 +1,48 @@
 use crate::{CommandType, ShellAction};
 use is_executable::is_executable;
+use std::fs::File;
 use std::iter::Peekable;
 use std::str::CharIndices;
 use std::{
     env,
     path::{self, PathBuf},
+    process,
 };
+use std::io::Write;
+use std::process::Command;
 
 #[derive(Debug)]
 pub struct CommandInput<'a> {
     pub command_type: CommandType,
     pub command_str: String,
     pub args: Vec<String>,
+    pub redirect_file: Option<String>,
     pub paths: &'a [PathBuf],
 }
 
-fn parse_escape(iter: &mut Peekable<CharIndices>, token: &mut Option<String>, escaped_chars: &Vec<char>) {
+fn parse_escape(
+    iter: &mut Peekable<CharIndices>,
+    token: &mut Option<String>,
+    escaped_chars: &Vec<char>,
+) {
     if let Some(&(_, next_c)) = iter.peek() {
         if escaped_chars.contains(&next_c) || escaped_chars.is_empty() {
-
             add_to_token(token, next_c);
             iter.next();
-        }
-        else{
+        } else {
             add_to_token(token, '\\');
-
         }
-
     }
 }
 fn parse_delimiter(iter: &mut Peekable<CharIndices>, delimiter: char) -> Option<String> {
     let mut token: Option<String> = None;
     let is_double_quote = delimiter == '"';
-    let escaped_chars = vec!['"', '\\','$', '`', '\n'];
+    let escaped_chars = vec!['"', '\\', '$', '`', '\n'];
 
     while let Some((_, c)) = iter.next() {
-        if(is_double_quote && c == '\\'){
+        if (is_double_quote && c == '\\') {
             parse_escape(iter, &mut token, &escaped_chars);
-            continue
+            continue;
         }
         if c == delimiter {
             if let Some(&(_, next_c)) = iter.peek() {
@@ -46,7 +51,7 @@ fn parse_delimiter(iter: &mut Peekable<CharIndices>, delimiter: char) -> Option<
                     continue;
                 }
             }
-            if token.is_some(){
+            if token.is_some() {
                 return token;
             }
 
@@ -76,21 +81,16 @@ fn parse_input(input: &str) -> Vec<String> {
             continue;
         }
         if token_delimiters.contains(&c) {
-
             match parse_delimiter(&mut iter, c) {
-                Some(t) => {
-                    match &token {
-                        Some (tok) => {
-                            token.get_or_insert_with(String::new).push_str(&t);
-                            push_token(&mut token, &mut tokens);
-                        }
-                        None => {
-                            token.get_or_insert_with(String::new).push_str(&t);
-                        }
+                Some(t) => match &token {
+                    Some(tok) => {
+                        token.get_or_insert_with(String::new).push_str(&t);
+                        push_token(&mut token, &mut tokens);
                     }
-
-
-                }
+                    None => {
+                        token.get_or_insert_with(String::new).push_str(&t);
+                    }
+                },
                 None => (),
             }
 
@@ -103,22 +103,24 @@ fn parse_input(input: &str) -> Vec<String> {
         add_to_token(&mut token, c);
     }
     push_token(&mut token, &mut tokens);
-    //println!("args {:?}", tokens);
 
     tokens
 }
-fn remove_quotes(value: &str) -> &str {
-    let stripped_start = value.strip_prefix('"').unwrap_or(value);
-    let stripped_end = stripped_start.strip_suffix('"').unwrap_or(stripped_start);
-    stripped_end
-}
-
 impl<'a> CommandInput<'a> {
     pub fn new(input: String, paths: &'a [PathBuf]) -> Self {
+        let mut tokens = parse_input(&input);
+        let mut redirect_file = None;
 
-        let parsed_input = parse_input(&input);
-        let parsed_command = parsed_input.get(0).cloned().unwrap_or_default();
-        let parsed_args = parsed_input.get(1..).map_or(vec![], |s| s.to_vec());
+        if let Some(index) = tokens.iter().position(|t| t == ">" || t == "1>") {
+            if index + 1 < tokens.len() {
+                redirect_file = Some(tokens.remove(index + 1));
+                tokens.remove(index); //
+            }
+        }
+        let parsed_command = tokens.get(0).cloned().unwrap_or_default();
+
+        let parsed_args = tokens.get(1..).map_or(vec![], |s| s.to_vec());
+
         let cmd = match parsed_command.as_str() {
             "exit" => CommandType::Exit,
             "echo" => CommandType::Echo,
@@ -132,6 +134,7 @@ impl<'a> CommandInput<'a> {
             command_type: cmd,
             command_str: parsed_command,
             args: parsed_args,
+            redirect_file,
         }
     }
     pub fn get_exe_command(command: &str) -> PathBuf {
@@ -156,22 +159,41 @@ impl<'a> CommandInput<'a> {
     }
 
     pub fn execute(&self) -> ShellAction {
-        let (cmd, ..) = match &self.command_type {
+        let (cmd, path) = match &self.command_type {
             CommandType::Exec { command, path } => (command, path),
             _ => return ShellAction::Continue,
         };
-
-        let mut process = std::process::Command::new(cmd)
-            .args(&self.args)
-            .spawn()
-            .expect("failed to spawn process");
-
-        process.wait().expect("failed to wait for process");
-
+        let process: &mut Command =  &mut process::Command::new(path);
+        match self.redirect_file.as_ref() {
+            Some(file_name) => {
+                let file = File::create_new(file_name).unwrap();
+                process
+                    .args(&self.args)
+                    .stdout(file)
+                    .spawn()
+                    .expect("failed to spawn process")
+                    .wait()
+                    .expect("failed to wait on process");
+            }
+            None => {
+                process
+                    .args(&self.args)
+                    .spawn()
+                    .expect("failed to spawn process")
+                    .wait()
+                    .expect("failed to wait on process");
+            }
+        };
         return ShellAction::Continue;
     }
     pub fn echo(&self) -> ShellAction {
-        println!("{}", self.args.join(" "));
+        if self.redirect_file.is_some() {
+             std::fs::write(self.redirect_file.as_ref().unwrap(), self.args.join(" ").as_bytes()).unwrap();
+        }
+        else{
+            println!("{}", self.args.join(" "));
+
+        }
         ShellAction::Continue
     }
 
