@@ -118,10 +118,10 @@ impl<'a> CommandInput<'a> {
         let mut redirect_stderr = None;
         if let Some(index) = tokens
             .iter()
-            .position(|t| t == ">" || t == "1>" || t == ">>")
+            .position(|t| t == ">" || t == "1>" || t == ">>" || t== "1>>")
         {
             if index + 1 < tokens.len() {
-                if tokens.index(index) == ">>" {
+                if tokens.index(index) == ">>" || tokens.index(index) == "1>>" {
                     overwrite_std_out_file = false;
                 }
                 redirect_stdout = Some(tokens.remove(index + 1));
