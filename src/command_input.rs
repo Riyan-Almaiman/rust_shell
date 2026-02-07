@@ -15,10 +15,9 @@ pub struct CommandInput<'a> {
     pub paths: &'a [PathBuf],
 }
 
-fn parse_escape(iter: &mut Peekable<CharIndices>, token: &mut Option<String>) {
-    let escaped_chars = ['"', '\\','$', '`', '\n'];
+fn parse_escape(iter: &mut Peekable<CharIndices>, token: &mut Option<String>, escaped_chars: &Vec<char>) {
     if let Some(&(_, next_c)) = iter.peek() {
-        if escaped_chars.contains(&next_c) {
+        if escaped_chars.contains(&next_c) || escaped_chars.is_empty() {
 
             add_to_token(token, next_c);
             iter.next();
@@ -33,10 +32,11 @@ fn parse_escape(iter: &mut Peekable<CharIndices>, token: &mut Option<String>) {
 fn parse_delimiter(iter: &mut Peekable<CharIndices>, delimiter: char) -> Option<String> {
     let mut token: Option<String> = None;
     let is_double_quote = delimiter == '"';
+    let escaped_chars = vec!['"', '\\','$', '`', '\n'];
 
     while let Some((_, c)) = iter.next() {
         if(is_double_quote && c == '\\'){
-            parse_escape(iter, &mut token);
+            parse_escape(iter, &mut token, &escaped_chars);
             continue
         }
         if c == delimiter {
@@ -72,7 +72,7 @@ fn parse_input(input: &str) -> Vec<String> {
     let mut iter = input.char_indices().peekable();
     while let Some((_, c)) = iter.next() {
         if c == '\\' {
-            parse_escape(&mut iter, &mut token);
+            parse_escape(&mut iter, &mut token, &vec![]);
             continue;
         }
         if token_delimiters.contains(&c) {
