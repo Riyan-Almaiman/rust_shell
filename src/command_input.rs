@@ -1,7 +1,7 @@
 use crate::{CommandType, ShellAction};
 use is_executable::is_executable;
 use std::fs::File;
-use std::io::Write;
+use std::io::{stderr, BufReader, Write};
 use std::iter::Peekable;
 use std::process::Command;
 use std::str::CharIndices;
@@ -202,7 +202,8 @@ impl<'a> CommandInput<'a> {
             std::fs::write(self.redirect_std_out.as_ref().unwrap(), args).unwrap();
         } else {
             if self.redirect_std_error.is_some() {
-                std::fs::write(self.redirect_std_error.as_ref().unwrap(), args).unwrap();
+                std::fs::write(self.redirect_std_error.as_ref().unwrap(), "").unwrap();
+
             }
             println!("{}", self.args.join(" "));
         }
