@@ -21,6 +21,7 @@ pub struct CommandInput<'a> {
     pub redirect_std_out: Option<String>,
     pub redirect_std_error: Option<String>,
     pub overwrite_std_out_redirect: bool,
+    pub overwrite_std_err_file: bool,
     pub paths: &'a [PathBuf],
 }
 
@@ -115,17 +116,39 @@ impl<'a> CommandInput<'a> {
         let mut tokens = parse_input(&input);
         let mut redirect_stdout = None;
         let mut overwrite_std_out_file = true;
+        let mut overwrite_std_err_file = true;
         let mut redirect_stderr = None;
-        if let Some(index) = tokens
+        // Use a loop to catch ALL redirections
+        while let Some(index) = tokens
             .iter()
-            .position(|t| t == ">" || t == "1>" || t == ">>" || t== "1>>")
+            .position(|t| t == ">" || t == "1>" || t == ">>" || t == "1>>" || t == "2>" || t == "2>>")
         {
             if index + 1 < tokens.len() {
-                if tokens.index(index) == ">>" || tokens.index(index) == "1>>" {
-                    overwrite_std_out_file = false;
+                let operator = tokens.remove(index);
+                let filename = tokens.remove(index);
+
+                match operator.as_str() {
+                    ">" | "1>" => {
+                        redirect_stdout = Some(filename);
+                        overwrite_std_out_file = true;
+                    }
+                    ">>" | "1>>" => {
+                        redirect_stdout = Some(filename);
+                        overwrite_std_out_file = false;
+                    }
+                    "2>" => {
+                        redirect_stderr = Some(filename);
+                        overwrite_std_err_file = true;
+                    }
+                    "2>>" => {
+                        redirect_stderr = Some(filename);
+                        overwrite_std_err_file = false;
+                    }
+                    _ => {}
                 }
-                redirect_stdout = Some(tokens.remove(index + 1));
+            } else {
                 tokens.remove(index);
+                break;
             }
         }
         if let Some(index) = tokens.iter().position(|t| t == "2>") {
@@ -154,6 +177,7 @@ impl<'a> CommandInput<'a> {
             redirect_std_out: redirect_stdout,
             overwrite_std_out_redirect: overwrite_std_out_file,
             redirect_std_error: redirect_stderr,
+            overwrite_std_err_file
         }
     }
     pub fn get_exe_command(command: &str) -> PathBuf {
@@ -197,8 +221,13 @@ impl<'a> CommandInput<'a> {
             }
         }
         if let Some(file) = &self.redirect_std_error {
-            match File::create(file) {
-                Ok(file) => process = process.stderr(file),
+            match OpenOptions::new()
+                .create(true)
+                .write(true)
+                .append(!self.overwrite_std_err_file)
+                .truncate(self.overwrite_std_err_file)
+                .open(file)
+            {   Ok(file) => process = process.stderr(file),
                 Err(error) => return ShellAction::Error(error.to_string()),
             }
         }
@@ -229,8 +258,20 @@ impl<'a> CommandInput<'a> {
                 Err(error) => ShellAction::Error(error.to_string())
             }
         }
-        if self.redirect_std_error.is_some() {
-            std::fs::write(self.redirect_std_error.as_ref().unwrap(), "").unwrap();
+        if let Some(file) = &self.redirect_std_error {
+             match OpenOptions::new()
+                .create(true)
+                .write(true)
+                .append(!self.overwrite_std_err_file)
+                .truncate(self.overwrite_std_err_file)
+                .open(file)
+            {
+                Ok(mut file) => {
+                    file.write_all("".as_bytes())
+                        .expect("failed to write to file");
+                }
+                Err(error) => return ShellAction::Error(error.to_string())
+            }
         }
         println!("{}", self.args.join(" "));
 
