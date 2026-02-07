@@ -12,7 +12,6 @@ pub struct CommandInput<'a> {
     pub command_type: CommandType,
     pub command_str: String,
     pub args: Vec<String>,
-    pub raw_args: String,
     pub paths: &'a [PathBuf],
 }
 
@@ -80,7 +79,7 @@ fn parse_input(input: &str) -> Vec<String> {
                             token.get_or_insert_with(String::new).push_str(&t);
                         }
                     }
-                    
+
 
                 }
                 None => (),
@@ -95,28 +94,35 @@ fn parse_input(input: &str) -> Vec<String> {
         add_to_token(&mut token, c);
     }
     push_token(&mut token, &mut tokens);
-    // println!("args {:?}", tokens);
+    println!("args {:?}", tokens);
 
     tokens
+}
+fn remove_quotes(value: &str) -> &str {
+    let stripped_start = value.strip_prefix('"').unwrap_or(value);
+    let stripped_end = stripped_start.strip_suffix('"').unwrap_or(stripped_start);
+    stripped_end
 }
 
 impl<'a> CommandInput<'a> {
     pub fn new(input: String, paths: &'a [PathBuf]) -> Self {
-        let (command, args) = input.split_once(' ').unwrap_or((&input, ""));
-        let cmd = match command {
+
+        let parsed_input = parse_input(&input);
+        let parsed_command = parsed_input.get(0).cloned().unwrap_or_default();
+        let parsed_args = parsed_input.get(1..).map_or(vec![], |s| s.to_vec());
+        let cmd = match parsed_command.as_str() {
             "exit" => CommandType::Exit,
             "echo" => CommandType::Echo,
             "type" => CommandType::Type,
             "pwd" => CommandType::PWD,
             "cd" => CommandType::CD,
-            _ => Self::parse_unknown(command, paths),
+            _ => Self::parse_unknown(&parsed_command, paths),
         };
         Self {
             paths,
             command_type: cmd,
-            command_str: command.to_string(),
-            args: parse_input(args),
-            raw_args: args.to_string(),
+            command_str: parsed_command,
+            args: parsed_args,
         }
     }
     pub fn get_exe_command(command: &str) -> PathBuf {
