@@ -187,8 +187,11 @@ impl<'a> CommandInput<'a> {
         return ShellAction::Continue;
     }
     pub fn echo(&self) -> ShellAction {
+        let mut args =  self.args.join(" ");
+        args.push('\n');
+
         if self.redirect_file.is_some() {
-             std::fs::write(self.redirect_file.as_ref().unwrap(), self.args.join(" ").as_bytes()).unwrap();
+             std::fs::write(self.redirect_file.as_ref().unwrap(), args).unwrap();
         }
         else{
             println!("{}", self.args.join(" "));
