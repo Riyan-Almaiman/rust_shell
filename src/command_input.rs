@@ -163,7 +163,7 @@ impl<'a> CommandInput<'a> {
             CommandType::Exec { command, path } => (command, path),
             _ => return ShellAction::Continue,
         };
-        let process: &mut Command =  &mut process::Command::new(path);
+        let process: &mut Command =  &mut process::Command::new(cmd);
         match self.redirect_file.as_ref() {
             Some(file_name) => {
                 let file = File::create_new(file_name).unwrap();
