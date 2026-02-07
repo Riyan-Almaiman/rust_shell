@@ -63,7 +63,7 @@ fn main() {
             }
             ShellAction::Exit => break,
             ShellAction::Error(msg) => {
-                println!("Error: {}", msg);
+                writeln!(&mut io::stderr(), "{}", msg).unwrap();
                 continue;
             }
         }
