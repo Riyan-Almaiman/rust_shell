@@ -215,12 +215,12 @@ impl<'a> CommandInput<'a> {
         if let Some(file) = &self.redirect_std_out {
             return match OpenOptions::new()
                 .create(true)
-                .append(self.overwrite_std_out_redirect)
-                .truncate(!self.overwrite_std_out_redirect)
+                .append(!self.overwrite_std_out_redirect)
+                .truncate(self.overwrite_std_out_redirect)
                 .open(file)
             {
                 Ok(mut file) => {
-                    file.write(args.as_bytes())
+                    file.write_all(args.as_bytes())
                         .expect("failed to write to file");
                     ShellAction::Continue
                 }
