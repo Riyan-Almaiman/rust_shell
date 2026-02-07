@@ -187,6 +187,8 @@ impl<'a> CommandInput<'a> {
         if let Some(file) = &self.redirect_std_out {
             match OpenOptions::new()
                 .create(true)
+                .write(true)
+
                 .append(self.overwrite_std_out_redirect)
                 .truncate(self.overwrite_std_out_redirect)
                 .open(file)
@@ -215,6 +217,7 @@ impl<'a> CommandInput<'a> {
         if let Some(file) = &self.redirect_std_out {
             return match OpenOptions::new()
                 .create(true)
+                .write(true)
                 .append(!self.overwrite_std_out_redirect)
                 .truncate(self.overwrite_std_out_redirect)
                 .open(file)
