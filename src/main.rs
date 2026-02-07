@@ -4,7 +4,6 @@ use std::{
     path::{Path, PathBuf},
 };
 mod command_input;
-mod bit_flags;
 
 #[allow(unused_imports)]
 use std::io::{self, Write};

@@ -16,9 +16,15 @@ pub struct CommandInput<'a> {
 }
 
 fn parse_escape(iter: &mut Peekable<CharIndices>, token: &mut Option<String>) {
+    let escaped_chars = ['"', '\\','$', '`', '\n'];
     if let Some(&(_, next_c)) = iter.peek() {
-        add_to_token(token, next_c);
-        iter.next();
+
+        if escaped_chars.contains(&next_c) {
+            add_to_token(token, next_c);
+            iter.next();
+        }
+        add_to_token(token, '\\');
+
     }
 }
 fn parse_delimiter(iter: &mut Peekable<CharIndices>, delimiter: char) -> Option<String> {
@@ -94,7 +100,7 @@ fn parse_input(input: &str) -> Vec<String> {
         add_to_token(&mut token, c);
     }
     push_token(&mut token, &mut tokens);
-    // println!("args {:?}", tokens);
+    //println!("args {:?}", tokens);
 
     tokens
 }
