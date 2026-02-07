@@ -9,6 +9,7 @@ mod command_input;
 use std::io::{self, Write};
 enum ShellAction {
     Continue,
+    Error(String),
     Exit,
 }
 use command_input::CommandInput;
@@ -56,8 +57,15 @@ fn main() {
         };
 
         match action {
-            ShellAction::Continue => {}
+
+            ShellAction::Continue => {
+                continue;
+            }
             ShellAction::Exit => break,
+            ShellAction::Error(msg) => {
+                println!("Error: {}", msg);
+                continue;
+            }
         }
     }
 }

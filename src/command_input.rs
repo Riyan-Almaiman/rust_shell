@@ -1,22 +1,24 @@
 use crate::{CommandType, ShellAction};
 use is_executable::is_executable;
 use std::fs::File;
+use std::io::Write;
 use std::iter::Peekable;
+use std::process::Command;
 use std::str::CharIndices;
 use std::{
     env,
     path::{self, PathBuf},
     process,
 };
-use std::io::Write;
-use std::process::Command;
 
 #[derive(Debug)]
 pub struct CommandInput<'a> {
     pub command_type: CommandType,
     pub command_str: String,
     pub args: Vec<String>,
-    pub redirect_file: Option<String>,
+    pub redirect_std_out: Option<String>,
+    pub redirect_std_error: Option<String>,
+
     pub paths: &'a [PathBuf],
 }
 
@@ -109,12 +111,18 @@ fn parse_input(input: &str) -> Vec<String> {
 impl<'a> CommandInput<'a> {
     pub fn new(input: String, paths: &'a [PathBuf]) -> Self {
         let mut tokens = parse_input(&input);
-        let mut redirect_file = None;
-
+        let mut redirect_stdout = None;
+        let mut redirect_stderr = None;
         if let Some(index) = tokens.iter().position(|t| t == ">" || t == "1>") {
             if index + 1 < tokens.len() {
-                redirect_file = Some(tokens.remove(index + 1));
-                tokens.remove(index); //
+                redirect_stdout = Some(tokens.remove(index + 1));
+                tokens.remove(index);
+            }
+        }
+        if let Some(index) = tokens.iter().position(|t| t == "2>") {
+            if index + 1 < tokens.len() {
+                redirect_stderr = Some(tokens.remove(index + 1));
+                tokens.remove(index);
             }
         }
         let parsed_command = tokens.get(0).cloned().unwrap_or_default();
@@ -134,7 +142,8 @@ impl<'a> CommandInput<'a> {
             command_type: cmd,
             command_str: parsed_command,
             args: parsed_args,
-            redirect_file,
+            redirect_std_out: redirect_stdout,
+            redirect_std_error: redirect_stderr,
         }
     }
     pub fn get_exe_command(command: &str) -> PathBuf {
@@ -163,39 +172,36 @@ impl<'a> CommandInput<'a> {
             CommandType::Exec { command, path } => (command, path),
             _ => return ShellAction::Continue,
         };
-        let process: &mut Command =  &mut process::Command::new(cmd);
-        match self.redirect_file.as_ref() {
-            Some(file_name) => {
-                let file = File::create_new(file_name).unwrap();
-                process
-                    .args(&self.args)
-                    .stdout(file)
-                    .spawn()
-                    .expect("failed to spawn process")
-                    .wait()
-                    .expect("failed to wait on process");
+        let mut process = process::Command::new(cmd);
+        let mut process = process.args(&self.args);
+        if let Some(file) = &self.redirect_std_out {
+            match File::create(file) {
+                Ok(file) => process = process.stdout(file),
+                Err(error) => return ShellAction::Error(error.to_string()),
             }
-            None => {
-                process
-                    .args(&self.args)
-                    .spawn()
-                    .expect("failed to spawn process")
-                    .wait()
-                    .expect("failed to wait on process");
+        }
+        if let Some(file) = &self.redirect_std_error {
+            match File::create(file) {
+                Ok(file) => process = process.stderr(file),
+                Err(error) => return ShellAction::Error(error.to_string()),
             }
-        };
+        }
+        process
+            .spawn()
+            .expect("failed to spawn process")
+            .wait()
+            .expect("failed to wait on process");
+
         return ShellAction::Continue;
     }
     pub fn echo(&self) -> ShellAction {
-        let mut args =  self.args.join(" ");
+        let mut args = self.args.join(" ");
         args.push('\n');
 
-        if self.redirect_file.is_some() {
-             std::fs::write(self.redirect_file.as_ref().unwrap(), args).unwrap();
-        }
-        else{
+        if self.redirect_std_out.is_some() {
+            std::fs::write(self.redirect_std_out.as_ref().unwrap(), args).unwrap();
+        } else {
             println!("{}", self.args.join(" "));
-
         }
         ShellAction::Continue
     }
