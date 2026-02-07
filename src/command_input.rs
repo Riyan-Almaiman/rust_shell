@@ -18,12 +18,15 @@ pub struct CommandInput<'a> {
 fn parse_escape(iter: &mut Peekable<CharIndices>, token: &mut Option<String>) {
     let escaped_chars = ['"', '\\','$', '`', '\n'];
     if let Some(&(_, next_c)) = iter.peek() {
-
         if escaped_chars.contains(&next_c) {
+
             add_to_token(token, next_c);
             iter.next();
         }
-        add_to_token(token, '\\');
+        else{
+            add_to_token(token, '\\');
+
+        }
 
     }
 }
