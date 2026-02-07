@@ -201,6 +201,9 @@ impl<'a> CommandInput<'a> {
         if self.redirect_std_out.is_some() {
             std::fs::write(self.redirect_std_out.as_ref().unwrap(), args).unwrap();
         } else {
+            if self.redirect_std_error.is_some() {
+                std::fs::write(self.redirect_std_error.as_ref().unwrap(), args).unwrap();
+            }
             println!("{}", self.args.join(" "));
         }
         ShellAction::Continue
