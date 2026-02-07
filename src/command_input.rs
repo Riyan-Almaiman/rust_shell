@@ -1,8 +1,10 @@
 use crate::{CommandType, ShellAction};
 use is_executable::is_executable;
-use std::fs::File;
-use std::io::{stderr, BufReader, Write};
+use log::error;
+use std::fs::{File, OpenOptions};
+use std::io::{BufReader, Write, stderr};
 use std::iter::Peekable;
+use std::ops::Index;
 use std::process::Command;
 use std::str::CharIndices;
 use std::{
@@ -18,7 +20,7 @@ pub struct CommandInput<'a> {
     pub args: Vec<String>,
     pub redirect_std_out: Option<String>,
     pub redirect_std_error: Option<String>,
-
+    pub overwrite_std_out_redirect: bool,
     pub paths: &'a [PathBuf],
 }
 
@@ -112,9 +114,16 @@ impl<'a> CommandInput<'a> {
     pub fn new(input: String, paths: &'a [PathBuf]) -> Self {
         let mut tokens = parse_input(&input);
         let mut redirect_stdout = None;
+        let mut overwrite_std_out_file = true;
         let mut redirect_stderr = None;
-        if let Some(index) = tokens.iter().position(|t| t == ">" || t == "1>") {
+        if let Some(index) = tokens
+            .iter()
+            .position(|t| t == ">" || t == "1>" || t == ">>")
+        {
             if index + 1 < tokens.len() {
+                if tokens.index(index) == ">>" {
+                    overwrite_std_out_file = false;
+                }
                 redirect_stdout = Some(tokens.remove(index + 1));
                 tokens.remove(index);
             }
@@ -143,6 +152,7 @@ impl<'a> CommandInput<'a> {
             command_str: parsed_command,
             args: parsed_args,
             redirect_std_out: redirect_stdout,
+            overwrite_std_out_redirect: overwrite_std_out_file,
             redirect_std_error: redirect_stderr,
         }
     }
@@ -175,7 +185,12 @@ impl<'a> CommandInput<'a> {
         let mut process = process::Command::new(cmd);
         let mut process = process.args(&self.args);
         if let Some(file) = &self.redirect_std_out {
-            match File::create(file) {
+            match OpenOptions::new()
+                .create(true)
+                .append(self.overwrite_std_out_redirect)
+                .truncate(self.overwrite_std_out_redirect)
+                .open(file)
+            {
                 Ok(file) => process = process.stdout(file),
                 Err(error) => return ShellAction::Error(error.to_string()),
             }
@@ -197,16 +212,26 @@ impl<'a> CommandInput<'a> {
     pub fn echo(&self) -> ShellAction {
         let mut args = self.args.join(" ");
         args.push('\n');
-
-        if self.redirect_std_out.is_some() {
-            std::fs::write(self.redirect_std_out.as_ref().unwrap(), args).unwrap();
-        } else {
-            if self.redirect_std_error.is_some() {
-                std::fs::write(self.redirect_std_error.as_ref().unwrap(), "").unwrap();
-
+        if let Some(file) = &self.redirect_std_out {
+            return match OpenOptions::new()
+                .create(true)
+                .append(self.overwrite_std_out_redirect)
+                .truncate(!self.overwrite_std_out_redirect)
+                .open(file)
+            {
+                Ok(mut file) => {
+                    file.write(args.as_bytes())
+                        .expect("failed to write to file");
+                    ShellAction::Continue
+                }
+                Err(error) => ShellAction::Error(error.to_string())
             }
-            println!("{}", self.args.join(" "));
         }
+        if self.redirect_std_error.is_some() {
+            std::fs::write(self.redirect_std_error.as_ref().unwrap(), "").unwrap();
+        }
+        println!("{}", self.args.join(" "));
+
         ShellAction::Continue
     }
 
