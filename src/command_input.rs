@@ -94,7 +94,7 @@ fn parse_input(input: &str) -> Vec<String> {
         add_to_token(&mut token, c);
     }
     push_token(&mut token, &mut tokens);
-    println!("args {:?}", tokens);
+    // println!("args {:?}", tokens);
 
     tokens
 }
