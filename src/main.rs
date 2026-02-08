@@ -1,10 +1,10 @@
 use std::{
-    env::{self, set_current_dir},
+    env::{self},
     ffi::OsString,
-    path::{Path, PathBuf},
+    path::{ PathBuf},
 };
 mod command_input;
-
+mod parser;
 #[allow(unused_imports)]
 use std::io::{self, Write};
 enum ShellAction {
@@ -13,7 +13,7 @@ enum ShellAction {
     Exit,
 }
 use command_input::CommandInput;
-
+mod builtin;
 #[derive(PartialEq, Debug)]
 enum CommandType {
     Exit,
@@ -30,8 +30,7 @@ fn main() {
     let paths: Vec<PathBuf> =
         env::split_paths(&std::env::var_os(key).unwrap_or(OsString::from(""))).collect();
 
-    let l  = key.len();
-    loop {
+        loop {
         let mut input = String::new();
 
         print!("$ ");
@@ -48,7 +47,7 @@ fn main() {
 
         let action = match command_input.command_type {
             CommandType::Exit => ShellAction::Exit,
-            CommandType::Type => command_input.type_command(),
+            CommandType::Type => command_input.type_command(&paths),
             CommandType::Echo => command_input.echo(),
             CommandType::Exec { .. } => command_input.execute(),
             CommandType::PWD => print_working_directory(),
