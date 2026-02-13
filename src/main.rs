@@ -37,25 +37,37 @@ impl Completer for MyHelper {
     type Candidate = String;
 
     fn complete(&self, line: &str, pos: usize, _ctx: &Context<'_>) -> rustyline::Result<(usize, Vec<String>)> {
-        let builtin = ["cd ", "echo ", "echo2 ", "echo3 ", "exit ", "pwd ", "type "];
+        let builtin = ["cd ", "echo ", "exit ", "pwd ", "type "];
         let prefix = &line[..pos];
         let word_start = prefix.rfind(' ').map(|i| i + 1).unwrap_or(0);
         let last_word = &prefix[word_start..];
-if self.last_tab_pos.get() == Some(pos) {
-           println!("Tab pressed again at the same position, showing all matches:");
-            for cmd in &builtin {
-                if cmd.starts_with(last_word) {
-                    println!("{}", cmd);
-                }
-            }
-            return Ok((word_start, builtin.iter().filter(|cmd| cmd.starts_with(last_word)).map(|s| s.to_string()).collect()));
-        }
-        let matches: Vec<String> = builtin
+
+        // 1. Start with matches from your built-ins
+        let mut matches: Vec<String> = builtin
             .iter()
             .filter(|cmd| cmd.starts_with(last_word))
             .map(|s| s.to_string())
             .collect();
-self.last_tab_pos.set(Some(pos));
+
+        // 2. Scan the system PATH for matching binaries
+        if let Ok(path_var) = std::env::var("PATH") {
+            for path in std::env::split_paths(&path_var) {
+                if let Ok(entries) = std::fs::read_dir(path) {
+                    for entry in entries.flatten() {
+                        let filename = entry.file_name().to_string_lossy().to_string();
+                        if filename.starts_with(last_word) {
+                            // Check if it's executable (optional but recommended)
+                            matches.push(filename);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Clean up: Sort and remove duplicates (different PATH folders might have the same binary)
+        matches.sort();
+        matches.dedup();
+
         Ok((word_start, matches))
     }
 }impl Hinter for MyHelper {
