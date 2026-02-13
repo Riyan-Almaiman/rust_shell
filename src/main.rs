@@ -37,7 +37,7 @@ impl Completer for MyHelper {
     type Candidate = String;
 
     fn complete(&self, line: &str, pos: usize, _ctx: &Context<'_>) -> rustyline::Result<(usize, Vec<String>)> {
-        let builtin = ["cd ", "echo ", "exit ", "pwd ", "type "];
+        let builtin = ["cd", "echo", "exit", "pwd", "type"];
         let prefix = &line[..pos];
         let word_start = prefix.rfind(' ').map(|i| i + 1).unwrap_or(0);
         let last_word = &prefix[word_start..];
@@ -48,6 +48,8 @@ impl Completer for MyHelper {
             .filter(|cmd| cmd.starts_with(last_word))
             .map(|s| s.to_string())
             .collect();
+if matches.len() == 0 {
+    
 
         // 2. Scan PATH (The tester expects these)
 if let Ok(path_var) = std::env::var("PATH") {
@@ -62,7 +64,7 @@ if let Ok(path_var) = std::env::var("PATH") {
             }
         }
     }
-}
+}}
 
         matches.sort();
         matches.dedup();
