@@ -50,18 +50,19 @@ impl Completer for MyHelper {
             .collect();
 
         // 2. Scan PATH (The tester expects these)
-        if let Ok(path_var) = std::env::var("PATH") {
-            for path in std::env::split_paths(&path_var) {
-                if let Ok(entries) = std::fs::read_dir(path) {
-                    for entry in entries.flatten() {
-                        let filename = entry.file_name().to_string_lossy().to_string();
-                        if filename.starts_with(last_word) {
-                            matches.push(filename);
-                        }
-                    }
+if let Ok(path_var) = std::env::var("PATH") {
+    for path in std::env::split_paths(&path_var) {
+        if let Ok(entries) = std::fs::read_dir(path) {
+            for entry in entries.flatten() {
+                let filename = entry.file_name().to_string_lossy().to_string();
+                if filename.starts_with(last_word) {
+                    // ADD THE SPACE HERE
+                    matches.push(format!("{} ", filename)); 
                 }
             }
         }
+    }
+}
 
         matches.sort();
         matches.dedup();
