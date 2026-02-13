@@ -42,13 +42,14 @@ impl Completer for MyHelper {
         let word_start = prefix.rfind(' ').map(|i| i + 1).unwrap_or(0);
         let last_word = &prefix[word_start..];
 
-        // 1. Gather all candidates (Builtins + System PATH)
+        // 1. Gather all candidates
         let mut matches: Vec<String> = builtin
             .iter()
             .filter(|cmd| cmd.starts_with(last_word))
             .map(|s| s.to_string())
             .collect();
 
+        // 2. Scan PATH (The tester expects these)
         if let Ok(path_var) = std::env::var("PATH") {
             for path in std::env::split_paths(&path_var) {
                 if let Ok(entries) = std::fs::read_dir(path) {
@@ -61,24 +62,15 @@ impl Completer for MyHelper {
                 }
             }
         }
-        
+
         matches.sort();
         matches.dedup();
 
-        // 2. Handle the results based on match count
-        if matches.is_empty() {
-            return Ok((pos, Vec::new()));
-        }
-
-        if matches.len() == 1 {
-            // Only one match? Complete it!
-            return Ok((word_start, matches));
-        } else {
-            // Multiple matches! 
-            // The tester expects us NOT to complete a specific word yet.
-            // We return all matches; Rustyline will handle the bell/list.
-            return Ok((word_start, matches));
-        }
+        // 3. Return word_start and ALL matches
+        // If matches.len() > 1, Rustyline will:
+        // Press 1: Beep (if no more common prefix can be added)
+        // Press 2: Print matches on a new line
+        Ok((word_start, matches))
     }
 }impl Hinter for MyHelper {
     type Hint = String;
@@ -151,7 +143,7 @@ fn main() {
 let mut rl: rustyline::Editor<MyHelper, FileHistory> = rustyline::Editor::new().unwrap();
 rl.set_helper(Some(MyHelper::new()));
 
-rl.set_completion_type(CompletionType::Circular);
+rl.set_completion_type(CompletionType::List);
         loop {
         let mut input = String::new();
 
