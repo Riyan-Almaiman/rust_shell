@@ -58,8 +58,7 @@ if let Ok(path_var) = std::env::var("PATH") {
             for entry in entries.flatten() {
                 let filename = entry.file_name().to_string_lossy().to_string();
                 if filename.starts_with(last_word) {
-                    // ADD THE SPACE HERE
-                   
+                    matches.push(filename);                   
                 }
             }
         }
