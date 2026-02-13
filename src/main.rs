@@ -42,33 +42,43 @@ impl Completer for MyHelper {
         let word_start = prefix.rfind(' ').map(|i| i + 1).unwrap_or(0);
         let last_word = &prefix[word_start..];
 
-        // 1. Start with matches from your built-ins
+        // 1. Gather all candidates (Builtins + System PATH)
         let mut matches: Vec<String> = builtin
             .iter()
             .filter(|cmd| cmd.starts_with(last_word))
             .map(|s| s.to_string())
             .collect();
 
-        // 2. Scan the system PATH for matching binaries
         if let Ok(path_var) = std::env::var("PATH") {
             for path in std::env::split_paths(&path_var) {
                 if let Ok(entries) = std::fs::read_dir(path) {
                     for entry in entries.flatten() {
                         let filename = entry.file_name().to_string_lossy().to_string();
                         if filename.starts_with(last_word) {
-                            // Check if it's executable (optional but recommended)
                             matches.push(filename);
                         }
                     }
                 }
             }
         }
-
-        // 3. Clean up: Sort and remove duplicates (different PATH folders might have the same binary)
+        
         matches.sort();
         matches.dedup();
 
-        Ok((word_start, matches))
+        // 2. Handle the results based on match count
+        if matches.is_empty() {
+            return Ok((pos, Vec::new()));
+        }
+
+        if matches.len() == 1 {
+            // Only one match? Complete it!
+            return Ok((word_start, matches));
+        } else {
+            // Multiple matches! 
+            // The tester expects us NOT to complete a specific word yet.
+            // We return all matches; Rustyline will handle the bell/list.
+            return Ok((word_start, matches));
+        }
     }
 }impl Hinter for MyHelper {
     type Hint = String;
