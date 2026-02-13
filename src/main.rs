@@ -57,7 +57,7 @@ if let Ok(path_var) = std::env::var("PATH") {
                 let filename = entry.file_name().to_string_lossy().to_string();
                 if filename.starts_with(last_word) {
                     // ADD THE SPACE HERE
-                    matches.push(format!("{} ", filename)); 
+                   
                 }
             }
         }
@@ -66,7 +66,9 @@ if let Ok(path_var) = std::env::var("PATH") {
 
         matches.sort();
         matches.dedup();
-
+        if matches.len() == 1 {
+           matches[0].push(' '); // Add a space to the end of the single match 
+        }
         // 3. Return word_start and ALL matches
         // If matches.len() > 1, Rustyline will:
         // Press 1: Beep (if no more common prefix can be added)
