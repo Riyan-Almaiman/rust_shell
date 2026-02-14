@@ -9,26 +9,20 @@ use rustyline::{
 };
 #[allow(unused_imports)]
 use std::io::{self, Write};
+use std::process::Command;
 
 mod shell;
 use shell::Shell;
 
 use crate::{command_input::Cmd, shell::ShellAction};
 mod builtin;
-#[derive(PartialEq, Debug)]
-enum CommandType {
-    Exit,
-    Echo,
-    Type,
-    Exec,
-    PWD,
-    CD,
-    Unknown,
-}
+
 mod completion_helper;
+mod utils;
 
 fn main() {
-    let mut shell = Shell::new("PATH", "$ ");
+    let builtins :Vec<String> = vec!["exit".to_string(), "echo".to_string(), "type".to_string(), "cd".to_string(), "pwd".to_string()];
+    let mut shell = Shell::new("PATH", "$ ", builtins);
 
     loop {
         let input = match shell.read_line.readline(&shell.prompt) {
@@ -56,25 +50,20 @@ fn main() {
 
         let command = Cmd::new(input, &shell);
 
-        println!("Parsed command: {:?}", command);
 
-        let action = match command_input.command_type {
-            CommandType::Exit => ShellAction::Exit,
-            CommandType::Type => command_input.type_command(&shell),
-            CommandType::Echo => command_input.echo(),
-            CommandType::Exec => command_input.execute(),
-            CommandType::PWD => shell.print_current_dir(),
-            CommandType::CD => shell.change_directories(&command_input.args.join(" ")),
-            CommandType::Unknown => command_input.command_not_found(),
-        };
-
-        match action {
-            ShellAction::Continue => continue,
-            ShellAction::Exit => break,
-            ShellAction::Error(msg) => {
-                writeln!(&mut io::stderr(), "{}", msg).unwrap();
-                continue;
+        match command {
+            None=> continue,
+            Some(cmd) => {
+                match cmd.execute(&mut shell) {
+                    ShellAction::Continue => continue,
+                    ShellAction::Exit => break,
+                    ShellAction::Error(msg) => {
+                        writeln!(&mut io::stderr(), "{}", msg).unwrap();
+                        continue;
+                    }
+                }
             }
         }
+
     }
 }

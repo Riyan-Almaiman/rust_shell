@@ -11,6 +11,7 @@ pub struct Shell {
     pub read_line: Editor<MyHelper, FileHistory>,
     pub current_dir: PathBuf,
     pub prompt: String,
+    pub builtins: Vec<String>
 }
 pub struct Executable {
     pub name: String,
@@ -22,13 +23,14 @@ pub enum ShellAction {
     Exit,
 }
 impl Shell {
-    pub fn new(path: &str, prompt: &str) -> Self {
+    pub fn new(path: &str, prompt: &str, builtins: Vec<String>) -> Self {
         let mut shell = Shell {
             executables: Vec::new(),
             path: path.to_string(),
             prompt: prompt.to_string(),
             read_line: Editor::<MyHelper, FileHistory>::new().unwrap(),
             current_dir: env::current_dir().unwrap(),
+            builtins,
         };
         shell.read_line.set_helper(Some(MyHelper::new()));
 
@@ -36,19 +38,8 @@ impl Shell {
         shell.get_executables();
         shell
     }
-    pub fn print_current_dir(&self) -> ShellAction {
-        println!("{}", self.current_dir.display());
-        ShellAction::Continue
-    }
-    pub fn set_current_dir(&mut self, path: &PathBuf) {
-        match env::set_current_dir(path) {
-            Ok(_) => self.current_dir = env::current_dir().unwrap(),
-            Err(_) => {
-                println!("cd: {}: No such file or directory", path.display());
-            }
-        };
-    }
-        fn get_executables(&mut self) {
+
+    fn get_executables(&mut self) {
         if !self.executables.is_empty() {
             return;
         }
@@ -69,6 +60,6 @@ impl Shell {
             }
         }
     }
-
+ 
 
 }
