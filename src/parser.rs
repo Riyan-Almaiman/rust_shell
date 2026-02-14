@@ -103,7 +103,6 @@ pub fn parse_commands(cmd_tokens: &mut Vec<Vec<String>>, shell: &Shell) -> Optio
 
         current_cmd = Some(cmd);
     }
-
     current_cmd
 }
 pub fn split_by_delimiter<T: PartialEq + Clone>(vector: Vec<T>, delimiter: T) -> Vec<Vec<T>> {

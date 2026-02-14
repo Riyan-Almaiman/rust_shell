@@ -103,14 +103,26 @@ impl Cmd {
                     };
 
 
+                    let mut stdout: Box<dyn io::Write> =
+                        if let Some(redir) = &cmd.redirect_std_out {
+                            let file = redir
+                                .options
+                                .open(redir.filename.as_ref().unwrap())
+                                .unwrap();
+                            Box::new(file)
+                        } else {
+                            Box::new(io::stdout())
+                        };
+
                     if last {
                         return cmd.execute_builtin(
                             shell,
                             &mut *stdin,
-                            &mut io::stdout(),
+                            &mut *stdout,
                             &mut io::stderr(),
                         );
                     }
+
 
                     let (reader, writer) = pipe().unwrap();
                     let mut writer = writer;
@@ -143,9 +155,23 @@ impl Cmd {
                         }
                     }
 
-                    if !last {
+                    let mut stdout_file: Option<File> = None;
+
+                    if let Some(redir) = &cmd.redirect_std_out {
+                        let file = redir
+                            .options
+                            .open(redir.filename.as_ref().unwrap())
+                            .unwrap();
+
+                        stdout_file = Some(file);
+                    }
+
+                    if let Some(file) = stdout_file {
+                        command.stdout(Stdio::from(file));
+                    } else if !last {
                         command.stdout(Stdio::piped());
                     }
+
 
                     let mut child = command.spawn().unwrap();
 
