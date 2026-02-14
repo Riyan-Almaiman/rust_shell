@@ -102,6 +102,16 @@ impl Cmd {
                         None => Box::new(io::stdin()),
                     };
 
+                    let mut stderr: Box<dyn io::Write> =
+                        if let Some(redir) = &cmd.redirect_std_error {
+                            let file = redir
+                                .options
+                                .open(redir.filename.as_ref().unwrap())
+                                .unwrap();
+                            Box::new(file)
+                        } else {
+                            Box::new(io::stderr())
+                        };
 
                     let mut stdout: Box<dyn io::Write> =
                         if let Some(redir) = &cmd.redirect_std_out {
@@ -119,7 +129,7 @@ impl Cmd {
                             shell,
                             &mut *stdin,
                             &mut *stdout,
-                            &mut io::stderr(),
+                            &mut *stderr,
                         );
                     }
 
@@ -131,7 +141,7 @@ impl Cmd {
                         shell,
                         &mut *stdin,
                         &mut writer,
-                        &mut io::stderr(),
+                        &mut *stderr,
                     );
 
                     drop(writer);
@@ -170,6 +180,12 @@ impl Cmd {
                         command.stdout(Stdio::from(file));
                     } else if !last {
                         command.stdout(Stdio::piped());
+                    }
+                    if let Some(redir) = &cmd.redirect_std_error {
+                        let file = redir.options.open(
+                            redir.filename.as_ref().unwrap()
+                        ).unwrap();
+                        command.stderr(Stdio::from(file));
                     }
 
 
