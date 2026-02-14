@@ -25,6 +25,7 @@ pub enum BuiltInCommand{
 pub enum CommandType {
     Builtin(BuiltInCommand),
     External {
+        name: PathBuf,
         path: PathBuf,
         args: Vec<String>,
     },
@@ -149,9 +150,9 @@ impl Cmd {
                     previous_reader = Some(PipeReaderKind::Pipe(reader));
                 }
 
-                CommandType::External { path, args } => {
+                CommandType::External { path, args , name} => {
 
-                    let mut command = Command::new(path);
+                    let mut command = Command::new(name);
                     command.args(args);
 
                     if let Some(reader) = previous_reader.take() {

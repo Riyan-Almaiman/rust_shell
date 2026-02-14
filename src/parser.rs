@@ -30,7 +30,7 @@ pub fn parse_commandtype_from_cmd(cmd: &str,args: Vec<String>,  shell: &Shell) -
                 Some(exe) => {
                     if is_executable(&exe.path) {
 
-                        CommandType::External{args: args, path: exe.path.clone()}
+                        CommandType::External{args: args, path: exe.path.clone(), name: exe_name}
                     } else {
                         CommandType::Unknown(cmd.to_string())
                     }
@@ -89,7 +89,7 @@ pub fn parse_commands(cmd_tokens: &mut Vec<Vec<String>>, shell: &Shell) -> Optio
         let command_str = tokens.remove(0);
         let cmd= parse_commandtype_from_cmd(command_str.as_str(), tokens, &shell);
 
-        let mut cmd = Cmd {
+        let  cmd = Cmd {
             command_type: cmd,
             child: match current_cmd {
                 None=> None,
