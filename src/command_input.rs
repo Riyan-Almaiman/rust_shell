@@ -1,16 +1,11 @@
-use crate::parser::{self, parse_input};
+use crate::parser::{self, parse_input, split_by_delimiter};
 use crate::{CommandType, Shell, ShellAction};
 
 use std::fs::OpenOptions;
 
 use std::{path::PathBuf, process};
 
-#[derive(Debug)]
-pub struct CommandInput {
 
-    pub commands: Vec<Cmd>,
-    pub tokens: Vec<String>,
-}
 #[derive(Debug)]
 pub  struct Cmd {
     pub command_type: CommandType,
@@ -24,33 +19,24 @@ pub  struct Cmd {
 
 pub enum RedirectionType {
     File {
-        filename: String,
+        filename: Option<String>,
         overwrite: bool,
     },
     NextCmd {
      cmd: Option<Box<Cmd>>,
-    },
+    }
 }
-impl CommandInput {
-    pub fn new(input: String, shell: &Shell) -> Self {
-        let mut command_input = CommandInput {
-    
-            tokens: parse_input(&input),
-            commands: vec![],
-        };
-             
-        parser::parse_redirections(&mut command_input);
-
-        command_input.command_str = command_input.tokens.get(0).cloned().unwrap_or_default();
-
-        command_input.args = command_input.tokens.get(1..).map_or(vec![], |s| s.to_vec());
-
-        parser::parse_commandtype_from_cmd_str(&mut command_input, shell);
-        for token in &command_input.tokens {
-            println!("Token: {}", token);
+impl Cmd {
+    pub fn new(input: String, shell: &Shell) -> Option<Self> {
+        let tokens = parse_input(&input);
+        let mut cmd_strs = split_by_delimiter(tokens.clone(), "|".to_string());
+        for cmd_str in &cmd_strs {
+            println!("cmd_str: {:?}", cmd_str);
+          
         }
+        let  command =  parser::parse_commands(&mut cmd_strs, shell);
 
-        command_input
+        command
     }
 
     pub fn execute(&self) -> ShellAction {

@@ -6,7 +6,7 @@ use rustyline::{CompletionType, Editor, config::Configurer, history::FileHistory
 use crate::completion_helper::MyHelper;
 
 pub struct Shell {
-   pub executables: Vec<Executable>,
+    pub executables: Vec<Executable>,
     pub path: String,
     pub read_line: Editor<MyHelper, FileHistory>,
     pub current_dir: PathBuf,
@@ -69,21 +69,6 @@ impl Shell {
             }
         }
     }
-    pub fn change_directories(&mut self, path: &str) -> ShellAction {
-        if path == "~" {
-            let home = env::home_dir();
-            match home {
-                Some(p) => {
-                    self.set_current_dir(&p);
-                    return ShellAction::Continue;
-                }
-                None => {
-                    return ShellAction::Continue;
-                }
-            }
-        };
-        self.set_current_dir(&PathBuf::new().join(&path));
-        return ShellAction::Continue;
-    }
+
 
 }

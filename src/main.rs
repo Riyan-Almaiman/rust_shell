@@ -12,9 +12,8 @@ use std::io::{self, Write};
 
 mod shell;
 use shell::Shell;
-use command_input::CommandInput;
 
-use crate::shell::ShellAction;
+use crate::{command_input::Cmd, shell::ShellAction};
 mod builtin;
 #[derive(PartialEq, Debug)]
 enum CommandType {
@@ -55,7 +54,9 @@ fn main() {
             continue;
         }
 
-        let command_input = CommandInput::new(input.to_string(), &shell);
+        let command = Cmd::new(input, &shell);
+
+        println!("Parsed command: {:?}", command);
 
         let action = match command_input.command_type {
             CommandType::Exit => ShellAction::Exit,

@@ -1,10 +1,25 @@
 use std::{env, fs::OpenOptions, io::Write, path::PathBuf};
 
-use crate::{CommandType, ShellAction, Shell, command_input::CommandInput};
+use crate::{CommandType, ShellAction, Shell};
 
 impl CommandInput {
 
-
+    pub fn change_directories(shell: &mut Shell, path: &str) -> ShellAction {
+        if path == "~" {
+            let home = env::home_dir();
+            match home {
+                Some(p) => {
+                    shell.set_current_dir(&p);
+                    return ShellAction::Continue;
+                }
+                None => {
+                    return ShellAction::Continue;
+                }
+            }
+        };
+        shell.set_current_dir(&PathBuf::new().join(&path));
+        return ShellAction::Continue;
+    }
     pub fn echo(&self) -> ShellAction {
         let mut args = self.args.join(" ");
         args.push('\n');

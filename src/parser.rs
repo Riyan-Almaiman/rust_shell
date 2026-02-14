@@ -1,7 +1,10 @@
 use is_executable::is_executable;
-use std::{iter::Peekable, path::PathBuf, str::CharIndices};
+use std::{iter::Peekable, path::PathBuf, str::CharIndices, vec};
 
-use crate::{CommandType, Shell, command_input::CommandInput};
+use crate::{
+    CommandType, Shell,
+    command_input::{Cmd, RedirectionType},
+};
 
 pub fn get_exe_command(command: &str) -> PathBuf {
     if cfg!(target_os = "windows") && !command.ends_with(".exe") {
@@ -11,66 +14,122 @@ pub fn get_exe_command(command: &str) -> PathBuf {
     }
 }
 
-pub fn parse_commandtype_from_cmd_str(command_input: &mut CommandInput, shell: &Shell) {
-    command_input.command_type = match command_input.command_str.as_str() {
+pub fn parse_commandtype_from_cmd(cmd: &mut Cmd, shell: &Shell) {
+    cmd.command_type = match cmd.command_str.as_str() {
         "exit" => CommandType::Exit,
         "echo" => CommandType::Echo,
         "type" => CommandType::Type,
         "pwd" => CommandType::PWD,
         "cd" => CommandType::CD,
-        _ => parse_unknown(&command_input.command_str, shell),
+        _ => {
+            let exe_name = get_exe_command(&cmd.command_str);
+            let executable = shell.executables.iter().find(|exe| exe.name == exe_name);
+            match executable {
+                Some(exe) => {
+                    if is_executable(&exe.path) {
+                        cmd.path = Some(exe.path.clone());
+                        CommandType::Exec
+                    } else {
+                        CommandType::Unknown
+                    }
+                }
+                None => CommandType::Unknown,
+            }
+        }
     };
 }
-pub(crate) fn parse_unknown(command: &str, shell: &Shell) -> CommandType {
-    let exe_name = get_exe_command(command);
-    let executable = shell.executables.iter().find(|exe| exe.name == exe_name);
-    match executable {
-        Some(exe) =>  if is_executable(&exe.path) {
-             CommandType::Exec {
-            command: exe.name.clone().into(),
-            path: exe.path.clone().into_os_string(),
-        }} else {
-            CommandType::Unknown
-        },
-        None => CommandType::Unknown,
-    }
 
-}
-
-pub fn parse_redirections(input: &mut CommandInput) {
-    while let Some(index) = input
-        .tokens
-        .iter()
-        .position(|t| t == ">" || t == "1>" || t == ">>" || t == "1>>" || t == "2>" || t == "2>>")
-    {
-        if index + 1 < input.tokens.len() {
-            let operator = input.tokens.remove(index);
-            let filename = input.tokens.remove(index);
-
+fn parse_redirections(cmd: &mut Cmd) {
+    while let Some(index) = cmd.args.iter().position(|t| {
+        t == ">" || t == "1>" || t == ">>" || t == "1>>" || t == "2>" || t == "2>>" 
+    }) {
+        let mut filename = None;
+            let operator = cmd.args.remove(index);
+            match index + 1 <= cmd.args.len() {
+                true => filename = Some(cmd.args.remove(index)),
+                false => (),
+            }
             match operator.as_str() {
                 ">" | "1>" => {
-                    input.redirect_std_out = Some(filename);
-                    input.overwrite_std_out_file = true;
+                    cmd.redirect_std_out = Some(RedirectionType::File {
+                        filename,
+                        overwrite: true,
+                    });
                 }
                 ">>" | "1>>" => {
-                    input.redirect_std_out = Some(filename);
-                    input.overwrite_std_out_file = false;
+                    cmd.redirect_std_out = Some(RedirectionType::File {
+                        filename,
+                        overwrite: false,
+                    });
                 }
                 "2>" => {
-                    input.redirect_std_error = Some(filename);
-                    input.overwrite_std_err_file = true;
+                    cmd.redirect_std_error = Some(RedirectionType::File {
+                        filename,
+                        overwrite: true,
+                    });
                 }
                 "2>>" => {
-                    input.redirect_std_error = Some(filename);
-                    input.overwrite_std_err_file = false;
+                    cmd.redirect_std_error = Some(RedirectionType::File {
+                        filename,
+                        overwrite: false,
+                    });
                 }
                 _ => {}
             }
-        } else {
-            input.tokens.remove(index);
-            break;
         }
     }
+
+pub fn parse_commands(cmd_tokens: &mut Vec<Vec<String>>, shell: &Shell) -> Option<Cmd> {
+    if cmd_tokens.is_empty() {
+        return None;
+    }
+
+    let mut current_cmd: Option<Cmd> = None;
+
+    while let Some(mut tokens) = cmd_tokens.pop() {
+        if tokens.is_empty() { continue; }
+
+        let command_str = tokens.remove(0);
+        
+        let mut cmd = Cmd {
+            command_type: CommandType::Unknown,
+            path: None,
+            command_str,
+            args: tokens,
+            redirect_std_out: current_cmd.map(|c| RedirectionType::NextCmd {
+                cmd: Some(Box::new(c)),
+            }),
+            redirect_std_error: None,
+        };
+
+        parse_redirections(&mut cmd);
+        parse_commandtype_from_cmd(&mut cmd, shell);
+
+        current_cmd = Some(cmd);
+    }
+
+    current_cmd
+}
+pub fn split_by_delimiter<T: PartialEq + Clone>(vector: Vec<T>, delimiter: T) -> Vec<Vec<T>> {
+    let mut result = Vec::new();
+    let mut current = Vec::new();
+
+    for item in vector.iter() {
+        if *item == delimiter {
+            if !current.is_empty() {
+                result.push(current);
+                current = Vec::new();
+            }
+        } else {
+            current.push(item.clone());
+        }
+    }
+
+    if !current.is_empty() {
+        result.push(current);
+    }
+
+    result
 }
 
 fn parse_escape(
