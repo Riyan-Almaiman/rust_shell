@@ -17,22 +17,24 @@ pub  struct Cmd {
     pub path: Option<PathBuf>,
     pub command_str: String,
     pub args: Vec<String>,
-    pub redirect_std_out: Option<String>,
-    pub redirect_std_error: Option<String>,
-    pub overwrite_std_out_file: bool,
-    pub overwrite_std_err_file: bool,
-    pub next_pipeline_cmd: Option<Box<Cmd>>,
+    pub redirect_std_out: Option<RedirectionType>,
+    pub redirect_std_error: Option<RedirectionType>,
+}
+#[derive(Debug)]
+
+pub enum RedirectionType {
+    File {
+        filename: String,
+        overwrite: bool,
+    },
+    NextCmd {
+     cmd: Option<Box<Cmd>>,
+    },
 }
 impl CommandInput {
     pub fn new(input: String, shell: &Shell) -> Self {
         let mut command_input = CommandInput {
-            command_type: CommandType::Unknown,
-            command_str: String::new(),
-            args: vec![],
-            redirect_std_out: None,
-            redirect_std_error: None,
-            overwrite_std_out_file: true,
-            overwrite_std_err_file: true,
+    
             tokens: parse_input(&input),
             commands: vec![],
         };

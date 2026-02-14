@@ -21,7 +21,7 @@ enum CommandType {
     Exit,
     Echo,
     Type,
-    Exec ,
+    Exec,
     PWD,
     CD,
     Unknown,
