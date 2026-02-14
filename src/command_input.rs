@@ -46,7 +46,7 @@ impl CommandInput {
             CommandType::Exec { command, path } => (command, path),
             _ => return ShellAction::Continue,
         };
-        let mut process = process::Command::new(cmd);
+        let mut process = process::Command::new(_path);
         let mut process = process.args(&self.args);
         if let Some(file) = &self.redirect_std_out {
             match OpenOptions::new()
