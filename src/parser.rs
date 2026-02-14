@@ -1,7 +1,7 @@
 use is_executable::is_executable;
 use std::{iter::Peekable, path::PathBuf, str::CharIndices};
 
-use crate::{CommandType, command_input::CommandInput};
+use crate::{CommandType, Shell, command_input::CommandInput};
 
 pub fn get_exe_command(command: &str) -> PathBuf {
     if cfg!(target_os = "windows") && !command.ends_with(".exe") {
@@ -11,28 +11,30 @@ pub fn get_exe_command(command: &str) -> PathBuf {
     }
 }
 
-pub fn parse_commandtype_from_cmd_str(command_input: &mut CommandInput, paths: &[PathBuf]) {
+pub fn parse_commandtype_from_cmd_str(command_input: &mut CommandInput, shell: &Shell) {
     command_input.command_type = match command_input.command_str.as_str() {
         "exit" => CommandType::Exit,
         "echo" => CommandType::Echo,
         "type" => CommandType::Type,
         "pwd" => CommandType::PWD,
         "cd" => CommandType::CD,
-        _ => parse_unknown(&command_input.command_str, paths),
+        _ => parse_unknown(&command_input.command_str, shell),
     };
 }
-pub(crate) fn parse_unknown(command: &str, paths: &[PathBuf]) -> CommandType {
+pub(crate) fn parse_unknown(command: &str, shell: &Shell) -> CommandType {
     let exe_name = get_exe_command(command);
-    for path in paths {
-        let file = path.join(&exe_name);
-        if is_executable(&file) {
-            return CommandType::Exec {
-                command: exe_name,
-                path: file.into_os_string(),
-            };
-        }
+    let executable = shell.executables.iter().find(|exe| exe.name == exe_name);
+    match executable {
+        Some(exe) =>  if is_executable(&exe.path) {
+             CommandType::Exec {
+            command: exe.name.clone().into(),
+            path: exe.path.clone().into_os_string(),
+        }} else {
+            CommandType::Unknown
+        },
+        None => CommandType::Unknown,
     }
-    CommandType::Unknown
+
 }
 
 pub fn parse_redirections(input: &mut CommandInput) {
@@ -48,11 +50,11 @@ pub fn parse_redirections(input: &mut CommandInput) {
             match operator.as_str() {
                 ">" | "1>" => {
                     input.redirect_std_out = Some(filename);
-                    input.overwrite_std_out_redirect = true;
+                    input.overwrite_std_out_file = true;
                 }
                 ">>" | "1>>" => {
                     input.redirect_std_out = Some(filename);
-                    input.overwrite_std_out_redirect = false;
+                    input.overwrite_std_out_file = false;
                 }
                 "2>" => {
                     input.redirect_std_error = Some(filename);

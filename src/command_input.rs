@@ -1,5 +1,5 @@
 use crate::parser::{self, parse_input};
-use crate::{CommandType, ShellAction};
+use crate::{CommandType, Shell, ShellAction};
 
 use std::fs::OpenOptions;
 
@@ -7,36 +7,46 @@ use std::{path::PathBuf, process};
 
 #[derive(Debug)]
 pub struct CommandInput {
+
+    pub commands: Vec<Cmd>,
+    pub tokens: Vec<String>,
+}
+#[derive(Debug)]
+pub  struct Cmd {
     pub command_type: CommandType,
+    pub path: Option<PathBuf>,
     pub command_str: String,
     pub args: Vec<String>,
     pub redirect_std_out: Option<String>,
     pub redirect_std_error: Option<String>,
-    pub overwrite_std_out_redirect: bool,
+    pub overwrite_std_out_file: bool,
     pub overwrite_std_err_file: bool,
-    pub tokens: Vec<String>,
+    pub next_pipeline_cmd: Option<Box<Cmd>>,
 }
-
 impl CommandInput {
-    pub fn new(input: String, paths: &[PathBuf]) -> Self {
+    pub fn new(input: String, shell: &Shell) -> Self {
         let mut command_input = CommandInput {
             command_type: CommandType::Unknown,
             command_str: String::new(),
             args: vec![],
             redirect_std_out: None,
             redirect_std_error: None,
-            overwrite_std_out_redirect: true,
+            overwrite_std_out_file: true,
             overwrite_std_err_file: true,
             tokens: parse_input(&input),
+            commands: vec![],
         };
-
+             
         parser::parse_redirections(&mut command_input);
 
         command_input.command_str = command_input.tokens.get(0).cloned().unwrap_or_default();
 
         command_input.args = command_input.tokens.get(1..).map_or(vec![], |s| s.to_vec());
 
-        parser::parse_commandtype_from_cmd_str(&mut command_input, paths);
+        parser::parse_commandtype_from_cmd_str(&mut command_input, shell);
+        for token in &command_input.tokens {
+            println!("Token: {}", token);
+        }
 
         command_input
     }
@@ -52,8 +62,8 @@ impl CommandInput {
             match OpenOptions::new()
                 .create(true)
                 .write(true)
-                .append(!self.overwrite_std_out_redirect)
-                .truncate(self.overwrite_std_out_redirect)
+                .append(!self.overwrite_std_out_file)
+                .truncate(self.overwrite_std_out_file)
                 .open(file)
             {
                 Ok(file) => process = process.stdout(file),
