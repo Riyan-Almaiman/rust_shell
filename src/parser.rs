@@ -1,7 +1,11 @@
+use std::process::Command;
 use is_executable::is_executable;
-use std::{iter::Peekable, path::PathBuf, str::CharIndices};
-
-use crate::{CommandType, command_input::CommandInput};
+use std::{iter::Peekable, path::PathBuf, str::CharIndices, vec};
+use std::fs::{File, OpenOptions};
+use clap::arg;
+use crate::{Shell, command_input::{Cmd}, builtin};
+use crate::builtin::exit;
+use crate::command_input::{BuiltIn, CommandType, Redirection};
 
 pub fn get_exe_command(command: &str) -> PathBuf {
     if cfg!(target_os = "windows") && !command.ends_with(".exe") {
@@ -11,64 +15,117 @@ pub fn get_exe_command(command: &str) -> PathBuf {
     }
 }
 
-pub fn parse_commandtype_from_cmd_str(command_input: &mut CommandInput, paths: &[PathBuf]) {
-    command_input.command_type = match command_input.command_str.as_str() {
-        "exit" => CommandType::Exit,
-        "echo" => CommandType::Echo,
-        "type" => CommandType::Type,
-        "pwd" => CommandType::PWD,
-        "cd" => CommandType::CD,
-        _ => parse_unknown(&command_input.command_str, paths),
-    };
-}
-pub(crate) fn parse_unknown(command: &str, paths: &[PathBuf]) -> CommandType {
-    let exe_name = get_exe_command(command);
-    for path in paths {
-        let file = path.join(&exe_name);
-        if is_executable(&file) {
-            return CommandType::Exec {
-                command: exe_name,
-                path: file.into_os_string(),
-            };
+pub fn parse_commandtype_from_cmd(cmd: &str,args: Vec<String>,  shell: &Shell) -> CommandType {
+
+      match cmd{
+        "exit" => CommandType::Builtin(BuiltIn::Exit),
+        "echo" => CommandType::Builtin(BuiltIn::Echo(args)),
+        "type" => CommandType::Builtin(BuiltIn::Type(args)),
+        "pwd" => CommandType::Builtin(BuiltIn::PWD),
+        "cd" => CommandType::Builtin(BuiltIn::CD(args)),
+        _ => {
+            let exe_name = get_exe_command(cmd);
+            let executable = shell.executables.iter().find(|exe| exe.name == exe_name);
+            match executable {
+                Some(exe) => {
+                    if is_executable(&exe.path) {
+
+                        CommandType::External{args: args, path: exe.path.clone()}
+                    } else {
+                        CommandType::Unknown(cmd.to_string())
+                    }
+                }
+                None => CommandType::Unknown(cmd.to_string()),
+            }
         }
     }
-    CommandType::Unknown
 }
 
-pub fn parse_redirections(input: &mut CommandInput) {
-    while let Some(index) = input
-        .tokens
-        .iter()
-        .position(|t| t == ">" || t == "1>" || t == ">>" || t == "1>>" || t == "2>" || t == "2>>")
-    {
-        if index + 1 < input.tokens.len() {
-            let operator = input.tokens.remove(index);
-            let filename = input.tokens.remove(index);
+fn parse_redirections(tokens: &mut Vec<String>) -> (Option<Redirection>, Option<Redirection>) {
+    let mut std_out_file = None;
+    let mut std_err_file = None;
+    while let Some(index) = tokens.iter().position(|t| {
+        t == ">" || t == "1>" || t == ">>" || t == "1>>" || t == "2>" || t == "2>>" 
+    }) {
+        let mut file_name = None;
+            let operator = tokens.remove(index);
+            match index + 1 <= tokens.len() {
+                true => file_name = Some(tokens.remove(index)),
+                false => (),
+            }
+
 
             match operator.as_str() {
                 ">" | "1>" => {
-                    input.redirect_std_out = Some(filename);
-                    input.overwrite_std_out_redirect = true;
+                    std_out_file = Some(Redirection::new(true, file_name));
                 }
                 ">>" | "1>>" => {
-                    input.redirect_std_out = Some(filename);
-                    input.overwrite_std_out_redirect = false;
+                    std_out_file = Some(Redirection::new(false, file_name));
                 }
                 "2>" => {
-                    input.redirect_std_error = Some(filename);
-                    input.overwrite_std_err_file = true;
+                    std_err_file = Some(Redirection::new(true, file_name));
                 }
                 "2>>" => {
-                    input.redirect_std_error = Some(filename);
-                    input.overwrite_std_err_file = false;
+                    std_err_file = Some(Redirection::new(false, file_name));
                 }
                 _ => {}
             }
+        }
+
+    (std_out_file, std_err_file)
+}
+
+pub fn parse_commands(cmd_tokens: &mut Vec<Vec<String>>, shell: &Shell) -> Option<Cmd> {
+    if cmd_tokens.is_empty() {
+        return None;
+    }
+
+    let mut current_cmd: Option<Cmd> = None;
+
+    while let Some(mut tokens) = cmd_tokens.pop() {
+        if tokens.is_empty() { continue; }
+        let (std_out_file, std_err_file) = parse_redirections(&mut tokens);
+
+        let command_str = tokens.remove(0);
+        let cmd= parse_commandtype_from_cmd(command_str.as_str(), tokens, &shell);
+
+        let mut cmd = Cmd {
+            command_type: cmd,
+            child: match current_cmd {
+                None=> None,
+                Some(cmd)=> Some(Box::new(cmd))
+            },
+            command_str,
+            redirect_std_out: std_out_file,
+            redirect_std_error: std_err_file,
+
+        };
+
+        current_cmd = Some(cmd);
+    }
+
+    current_cmd
+}
+pub fn split_by_delimiter<T: PartialEq + Clone>(vector: Vec<T>, delimiter: T) -> Vec<Vec<T>> {
+    let mut result = Vec::new();
+    let mut current = Vec::new();
+
+    for item in vector.iter() {
+        if *item == delimiter {
+            if !current.is_empty() {
+                result.push(current);
+                current = Vec::new();
+            }
         } else {
-            input.tokens.remove(index);
-            break;
+            current.push(item.clone());
         }
     }
+
+    if !current.is_empty() {
+        result.push(current);
+    }
+
+    result
 }
 
 fn parse_escape(

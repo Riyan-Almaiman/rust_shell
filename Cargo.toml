@@ -13,3 +13,4 @@ is_executable = "1.0.5"
 thiserror = "1.0.38"
 log = "0.4.29"                             # error handling
 rustyline = "17.0.2"
+os_pipe = "1.2.3"
