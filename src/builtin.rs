@@ -48,17 +48,41 @@ use crate::utils::write_to_dest;
         ShellAction::Continue
     }
 
-pub fn type_command(cmd: &Cmd, dest: &mut dyn Write)-> ShellAction {
+pub fn type_command(
+    shell: &Shell,
+    args: &Vec<String>,
+    dest: &mut dyn Write,
+) -> ShellAction {
 
-        match &cmd.command_type {
-            CommandType::Unknown{..} => write_to_dest(dest, format!("{}: not found", cmd.command_str).as_str()),
-            CommandType::External{args, path} => {
-                write_to_dest(dest, format!("{} is {}", cmd.command_str, path.display()).as_str())
-            }
-            _ => write_to_dest(dest,format!("{} is a shell builtin", cmd.command_str).as_str()),
-        }
-        ShellAction::Continue
+    if args.is_empty() {
+        return ShellAction::Continue;
     }
+
+    let cmd_name = &args[0];
+
+    if shell.builtins.contains(cmd_name) {
+        write_to_dest(
+            dest,
+            format!("{} is a shell builtin", cmd_name).as_str(),
+        );
+        return ShellAction::Continue;
+    }
+
+    if let Some(exe) = shell.executables.iter().find(|e| e.name == *cmd_name) {
+        write_to_dest(
+            dest,
+            format!("{} is {}", cmd_name, exe.path.display()).as_str(),
+        );
+        return ShellAction::Continue;
+    }
+
+    write_to_dest(
+        dest,
+        format!("{}: not found", cmd_name).as_str(),
+    );
+
+    ShellAction::Continue
+}
 
 
 

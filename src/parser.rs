@@ -5,7 +5,7 @@ use std::fs::{File, OpenOptions};
 use clap::arg;
 use crate::{Shell, command_input::{Cmd}, builtin};
 use crate::builtin::exit;
-use crate::command_input::{BuiltIn, CommandType, Redirection};
+use crate::command_input::{BuiltInCommand, CommandType, Redirection};
 
 pub fn get_exe_command(command: &str) -> PathBuf {
     if cfg!(target_os = "windows") && !command.ends_with(".exe") {
@@ -18,11 +18,11 @@ pub fn get_exe_command(command: &str) -> PathBuf {
 pub fn parse_commandtype_from_cmd(cmd: &str,args: Vec<String>,  shell: &Shell) -> CommandType {
 
       match cmd{
-        "exit" => CommandType::Builtin(BuiltIn::Exit),
-        "echo" => CommandType::Builtin(BuiltIn::Echo(args)),
-        "type" => CommandType::Builtin(BuiltIn::Type(args)),
-        "pwd" => CommandType::Builtin(BuiltIn::PWD),
-        "cd" => CommandType::Builtin(BuiltIn::CD(args)),
+        "exit" => CommandType::Builtin(BuiltInCommand::Exit),
+        "echo" => CommandType::Builtin(BuiltInCommand::Echo(args)),
+        "type" => CommandType::Builtin(BuiltInCommand::Type(args)),
+        "pwd" => CommandType::Builtin(BuiltInCommand::PWD),
+        "cd" => CommandType::Builtin(BuiltInCommand::CD(args)),
         _ => {
             let exe_name = get_exe_command(cmd);
             let executable = shell.executables.iter().find(|exe| exe.name == exe_name);

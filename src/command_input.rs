@@ -14,7 +14,7 @@ use crate::builtin::{change_directories, echo, exit, print_current_dir, type_com
 
 #[derive(Debug)]
 
-pub enum BuiltIn{
+pub enum BuiltInCommand{
      Exit,
      Echo(Vec<String>),
      Type(Vec<String>),
@@ -23,7 +23,7 @@ pub enum BuiltIn{
 }
 #[derive(Debug)]
 pub enum CommandType {
-    Builtin(BuiltIn),
+    Builtin(BuiltInCommand),
     External {
         path: PathBuf,
         args: Vec<String>,
@@ -224,24 +224,25 @@ impl Cmd {
         match &self.command_type {
             CommandType::Builtin(builtin) => match builtin {
 
-                BuiltIn::Exit => return exit(),
+                BuiltInCommand::Exit => return exit(),
 
-                BuiltIn::PWD => {
+                BuiltInCommand::PWD => {
                     return print_current_dir(shell, output);
                 }
 
-                BuiltIn::CD(args) => {
+                BuiltInCommand::CD(args) => {
                     let path = args.get(0).map(|s| s.as_str()).unwrap_or("~");
                     return change_directories(shell, path, Some(output), error);
                 }
 
-                BuiltIn::Echo(args) => {
+                BuiltInCommand::Echo(args) => {
                     return echo(args, output);
                 }
-
-                BuiltIn::Type(_) => {
-                    return type_command(self, output);
+                BuiltInCommand::Type(args) => {
+                    return type_command(shell, args, output);
                 }
+
+
             },
 
             _ => ShellAction::Continue,
