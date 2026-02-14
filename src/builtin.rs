@@ -1,8 +1,9 @@
 use std::{env, fs::OpenOptions, io::Write, path::PathBuf};
 
 use crate::{CommandType, ShellAction, Shell};
+use crate::command_input::Cmd;
 
-impl CommandInput {
+
 
     pub fn change_directories(shell: &mut Shell, path: &str) -> ShellAction {
         if path == "~" {
@@ -74,4 +75,4 @@ impl CommandInput {
         }
         ShellAction::Continue
     }
-}
+
