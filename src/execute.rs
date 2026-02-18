@@ -157,8 +157,8 @@ impl Cmd {
                 BuiltInCommand::Type(args) => {
                     type_command(shell, args, output)
                 }
-                BuiltInCommand::History => { for entry in shell.read_line.history().iter() {
-                    write_to_dest(output, entry);
+                BuiltInCommand::History => { for (index, entry) in shell.read_line.history().iter().enumerate() {
+                    write_to_dest(output, format!("   {}  {}", index, entry).as_str());
                 }
                     ShellAction::Continue
 
