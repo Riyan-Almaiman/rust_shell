@@ -165,11 +165,17 @@ impl Cmd {
                     let n = first_arg.parse().unwrap_or(0);
                     let history = shell.read_line.history();
                     let len = history.len();
-                    let start = len.saturating_sub(n);
+                    let start = match n {
+                        0 => 0,
+                        n=> len.saturating_sub(n)
+                    };
 
-                    for (index, entry) in shell.read_line.history().iter().skip(start).enumerate() {
-                    write_to_dest(output, format!("   {}  {}", index +1 + start, entry).as_str());
-                }
+                    for (i, entry) in shell.read_line.history().iter().enumerate() {
+                        if i >= start {
+                            write_to_dest(output, &format!("{:>5}  {}", i + 1, entry));
+                        }
+                    }
+
                     ShellAction::Continue
 
                 }
