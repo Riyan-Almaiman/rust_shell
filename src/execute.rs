@@ -162,11 +162,12 @@ impl Cmd {
                 BuiltInCommand::History(args)=>
 
                 {
+
                     let first_arg  = args.get(0).map(|s| s.as_str()).unwrap_or("0");
                     let second_arg = args.get(1).map(|s| s.as_str()).unwrap_or("");
-                    let third_arg = args.get(2).map(|s| s.as_str()).unwrap_or("");
-                    if second_arg == "-r" {
-                        let path = PathBuf::from(third_arg);
+                
+                    if first_arg == "-r" {
+                        let path = PathBuf::from(second_arg);
                         if path.exists() {
                             shell.read_line.load_history(path.as_path()).unwrap();
                         }
