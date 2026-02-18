@@ -49,7 +49,7 @@ impl Shell {
     }
 
     fn get_executables(&mut self) {
-        
+
         if !self.executables.is_empty() {
             return;
         }
