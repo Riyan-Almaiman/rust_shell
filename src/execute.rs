@@ -1,6 +1,6 @@
 use std::io::Write;
 use rustyline::history::History;
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
@@ -200,6 +200,32 @@ impl Cmd {
                              }
                              return ShellAction::Continue;
                          }
+                        "-a" =>  {
+                            if second_arg.is_empty() {
+                                write_to_dest(error, "history: missing file operand");
+                                return ShellAction::Continue;
+                            }
+                            let path = PathBuf::from(second_arg);
+                            let mut file = OpenOptions::new()
+                                .create(true)
+                                .append(true)
+                                .open(&path);
+
+                            match file {
+                                Ok(mut file) => {
+                                    for entry in shell.read_line.history().iter() {
+                                        if let Err(e) = writeln!(file, "{}", entry) {
+                                            write_to_dest(error, &format!("history: {}", e));
+                                            return ShellAction::Continue;
+                                        }
+                                    }
+                                }
+                                Err(e) => {
+                                    write_to_dest(error, &format!("history: {}", e));
+                                }
+                            }
+                            return ShellAction::Continue;
+                        }
                         _ => ()
 
                     }
