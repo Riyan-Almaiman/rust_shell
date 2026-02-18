@@ -1,6 +1,7 @@
 use rustyline::history::History;
 use std::fs::File;
 use std::io;
+use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use os_pipe::pipe;
 use crate::builtin::{change_directories, echo, exit, print_current_dir, type_command};
@@ -162,6 +163,15 @@ impl Cmd {
 
                 {
                     let first_arg  = args.get(0).map(|s| s.as_str()).unwrap_or("0");
+                    let second_arg = args.get(1).map(|s| s.as_str()).unwrap_or("");
+                    let third_arg = args.get(2).map(|s| s.as_str()).unwrap_or("");
+                    if second_arg == "-r" {
+                        let path = PathBuf::from(third_arg);
+                        if path.exists() {
+                            shell.read_line.load_history(path.as_path()).unwrap();
+                        }
+                        return ShellAction::Continue
+                    }
                     let n = first_arg.parse().unwrap_or(0);
                     let history = shell.read_line.history();
                     let len = history.len();
@@ -169,7 +179,6 @@ impl Cmd {
                         0 => 0,
                         n=> len.saturating_sub(n)
                     };
-
                     for (i, entry) in shell.read_line.history().iter().enumerate() {
                         if i >= start {
                             write_to_dest(output, &format!("{:>5}  {}", i + 1, entry));
