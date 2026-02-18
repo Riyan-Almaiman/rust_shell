@@ -1,4 +1,0 @@
-history > history.txt
-cat history.txt
-echo test
-history > history.txt
