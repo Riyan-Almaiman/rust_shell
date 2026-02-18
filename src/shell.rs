@@ -43,6 +43,7 @@ impl Shell {
         if shell.history_file.exists()   {
             let _ = shell.read_line.load_history(shell.history_file.as_path());
         }
+        shell.read_line.set_completion_type(CompletionType::List);
         shell.read_line.set_helper(Some(MyHelper::new()));
         shell.get_executables();
         shell
