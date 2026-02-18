@@ -1,3 +1,4 @@
+use std::io::Write;
 use rustyline::history::History;
 use std::fs::File;
 use std::io;
@@ -183,8 +184,19 @@ impl Cmd {
                                  return ShellAction::Continue;
                              }
                              let path = PathBuf::from(second_arg);
-                             if let Err(e) = shell.read_line.save_history(&path) {
-                                 write_to_dest(error, &format!("history: {}", e));
+
+                             match File::create(&path) {
+                                 Ok(mut file) => {
+                                     for entry in shell.read_line.history().iter() {
+                                         if let Err(e) = writeln!(file, "{}", entry) {
+                                             write_to_dest(error, &format!("history: {}", e));
+                                             return ShellAction::Continue;
+                                         }
+                                     }
+                                 }
+                                 Err(e) => {
+                                     write_to_dest(error, &format!("history: {}", e));
+                                 }
                              }
                              return ShellAction::Continue;
                          }
