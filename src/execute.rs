@@ -165,13 +165,31 @@ impl Cmd {
 
                     let first_arg  = args.get(0).map(|s| s.as_str()).unwrap_or("0");
                     let second_arg = args.get(1).map(|s| s.as_str()).unwrap_or("");
-                
-                    if first_arg == "-r" {
-                        let path = PathBuf::from(second_arg);
-                        if path.exists() {
-                            shell.read_line.load_history(path.as_path()).unwrap();
-                        }
-                        return ShellAction::Continue
+                    match first_arg {
+                          "-r" => {
+                              if second_arg.is_empty() {
+                                  write_to_dest(error, "history: missing file operand");
+                                  return ShellAction::Continue;
+                              }
+                              let path = PathBuf::from(second_arg);
+                              if let Err(e) = shell.read_line.load_history(&path) {
+                                  write_to_dest(error, &format!("history: {}", e));
+                              }
+                              return ShellAction::Continue;
+                          }
+                         "-w" =>  {
+                             if second_arg.is_empty() {
+                                 write_to_dest(error, "history: missing file operand");
+                                 return ShellAction::Continue;
+                             }
+                             let path = PathBuf::from(second_arg);
+                             if let Err(e) = shell.read_line.save_history(&path) {
+                                 write_to_dest(error, &format!("history: {}", e));
+                             }
+                             return ShellAction::Continue;
+                         }
+                        _ => ()
+
                     }
                     let n = first_arg.parse().unwrap_or(0);
                     let history = shell.read_line.history();
