@@ -2,7 +2,7 @@ use std::{env, path::PathBuf};
 use std::path::Path;
 use is_executable::is_executable;
 use rustyline::{config::Configurer, history::FileHistory, CompletionType, Editor};
-
+use rustyline::history::History;
 use crate::completion_helper::MyHelper;
 
 
@@ -40,9 +40,11 @@ impl Shell {
             history_file
 
         };
-        if shell.history_file.exists()   {
+        if shell.history_file.exists() {
             let _ = shell.read_line.load_history(shell.history_file.as_path());
+            shell.last_written_index = shell.read_line.history().len();
         }
+
         shell.read_line.set_completion_type(CompletionType::List);
         shell.read_line.set_helper(Some(MyHelper::new()));
         shell.get_executables();
