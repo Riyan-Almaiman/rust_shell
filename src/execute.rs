@@ -1,3 +1,4 @@
+use rustyline::history::History;
 use std::fs::File;
 use std::io;
 use std::process::{Child, Command, Stdio};
@@ -157,7 +158,16 @@ impl Cmd {
                 BuiltInCommand::Type(args) => {
                     type_command(shell, args, output)
                 }
-                BuiltInCommand::History => { for (index, entry) in shell.read_line.history().iter().enumerate() {
+                BuiltInCommand::History(args)=>
+
+                {
+                    let first_arg  = args.get(0).map(|s| s.as_str()).unwrap_or("0");
+                    let n = first_arg.parse().unwrap_or(0);
+                    let history = shell.read_line.history();
+                    let len = history.len();
+                    let start = len.saturating_sub(n);
+
+                    for (index, entry) in shell.read_line.history().iter().skip(start).enumerate() {
                     write_to_dest(output, format!("   {}  {}", index, entry).as_str());
                 }
                     ShellAction::Continue

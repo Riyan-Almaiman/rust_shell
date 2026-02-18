@@ -21,7 +21,7 @@ pub enum BuiltInCommand {
     Type(Vec<String>),
     CD(Vec<String>),
     PWD,
-    History
+    History(Vec<String>)
 }
 #[derive(Debug)]
 pub enum CommandType {
@@ -101,7 +101,7 @@ impl Cmd {
             "type" => CommandType::Builtin(BuiltInCommand::Type(args)),
             "pwd" => CommandType::Builtin(BuiltInCommand::PWD),
             "cd" => CommandType::Builtin(BuiltInCommand::CD(args)),
-            "history" => CommandType::Builtin(BuiltInCommand::History),
+            "history" => CommandType::Builtin(BuiltInCommand::History(args)),
             _ => {
                 let exe_name = if cfg!(target_os = "windows") && !cmd.ends_with(".exe") {
                     PathBuf::from(format!("{}.exe", cmd))
