@@ -12,6 +12,8 @@ pub struct Shell {
     pub current_dir: PathBuf,
     pub prompt: String,
     pub builtins: Vec<String>,
+    pub last_written_index: usize,
+
 }
 pub struct Executable {
     pub name: String,
@@ -31,6 +33,7 @@ impl Shell {
             read_line: Editor::<MyHelper, FileHistory>::new().unwrap(),
             current_dir: env::current_dir().unwrap(),
             builtins,
+            last_written_index: 0,
         };
         shell.read_line.set_helper(Some(MyHelper::new()));
 

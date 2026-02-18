@@ -1,5 +1,7 @@
 use std::{env, io::Write, path::PathBuf};
-
+use std::fs::{File, OpenOptions};
+use std::io::Read;
+use rustyline::history::History;
 use crate::{Shell, ShellAction};
 
 use crate::utils::write_to_dest;
@@ -76,3 +78,94 @@ pub fn type_command(shell: &Shell, args: &Vec<String>, dest: &mut dyn Write) -> 
 
     ShellAction::Continue
 }
+pub fn history(shell: &mut Shell, args: &Vec<String>, output: &mut dyn Write, error: &mut dyn Write) -> ShellAction {
+
+    let first_arg = args.get(0).map(|s| s.as_str()).unwrap_or("0");
+    let second_arg = args.get(1).map(|s| s.as_str()).unwrap_or("");
+    match first_arg {
+        "-r" => {
+            if second_arg.is_empty() {
+                write_to_dest(error, "history: missing file operand");
+                return ShellAction::Continue;
+            }
+            let path = PathBuf::from(second_arg);
+            if let Err(e) = shell.read_line.load_history(&path) {
+                write_to_dest(error, &format!("history: {}", e));
+            }
+            return ShellAction::Continue;
+        }
+        "-w" => {
+            if second_arg.is_empty() {
+                write_to_dest(error, "history: missing file operand");
+                return ShellAction::Continue;
+            }
+
+            let path = PathBuf::from(second_arg);
+
+            match File::create(&path) {
+                Ok(mut file) => {
+                    for entry in shell.read_line.history().iter() {
+                        if let Err(e) = writeln!(file, "{}", entry) {
+                            write_to_dest(error, &format!("history: {}", e));
+                            return ShellAction::Continue;
+                        }
+                    }
+                }
+                Err(e) => {
+                    write_to_dest(error, &format!("history: {}", e));
+                }
+            }
+            return ShellAction::Continue;
+        }
+        "-a" => {
+            if second_arg.is_empty() {
+                write_to_dest(error, "history: missing file operand");
+                return ShellAction::Continue;
+            }
+
+            let path = PathBuf::from(second_arg);
+
+            match OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&path)
+            {
+                Ok(mut file) => {
+                    let history = shell.read_line.history();
+
+                    for entry in history.iter().skip(shell.last_written_index) {
+                        if let Err(e) = writeln!(file, "{}", entry) {
+                            write_to_dest(error, &format!("history: {}", e));
+                            return ShellAction::Continue;
+                        }
+                    }
+
+                    shell.last_written_index = history.len();
+                }
+                Err(e) => {
+                    write_to_dest(error, &format!("history: {}", e));
+                }
+            }
+
+            return ShellAction::Continue;
+        }
+
+        _ => (),
+    }
+    let n = first_arg.parse().unwrap_or(0);
+    let history = shell.read_line.history();
+    let len = history.len();
+    let start = match n {
+        0 => 0,
+        n => len.saturating_sub(n),
+    };
+    for (i, entry) in shell.read_line.history().iter().enumerate() {
+        if i >= start {
+            write_to_dest(output, &format!("{:>5}  {}", i + 1, entry));
+        }
+    }
+
+    ShellAction::Continue
+
+}
+
