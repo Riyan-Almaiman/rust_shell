@@ -119,7 +119,7 @@ pub fn history(shell: &mut Shell, args: &Vec<String>, output: &mut dyn Write, er
         }
         "-a" => {
             if second_arg.is_empty() {
-                write_to_dest(error, "history: missing file operand");
+                // write_to_dest(error, "history: missing file operand");
                 return ShellAction::Continue;
             }
 
