@@ -1,11 +1,9 @@
-
 use rustyline::{
-    Context, Helper, completion::Completer, highlight::Highlighter, hint::Hinter,
-    validate::Validator,
+    completion::Completer, highlight::Highlighter, hint::Hinter, validate::Validator, Context,
+    Helper,
 };
 
-pub(crate) struct MyHelper {
-}
+pub(crate) struct MyHelper {}
 impl MyHelper {
     pub fn new() -> Self {
         MyHelper {}
@@ -20,14 +18,7 @@ impl Completer for MyHelper {
         pos: usize,
         _ctx: &Context<'_>,
     ) -> rustyline::Result<(usize, Vec<String>)> {
-        let builtin = [
-            "cd",
-            "echo",
-            "exit",
-            "pwd",
-            "type",
-         
-        ];
+        let builtin = ["cd", "echo", "exit", "pwd", "type"];
         let prefix = &line[..pos];
         let word_start = prefix.rfind(' ').map(|i| i + 1).unwrap_or(0);
         let last_word = &prefix[word_start..];
@@ -60,7 +51,6 @@ impl Completer for MyHelper {
 
         Ok((word_start, matches))
     }
-
 }
 impl Hinter for MyHelper {
     type Hint = String;

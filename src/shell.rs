@@ -1,7 +1,7 @@
 use std::{env, path::PathBuf};
 
 use is_executable::is_executable;
-use rustyline::{CompletionType, Editor, config::Configurer, history::FileHistory};
+use rustyline::{config::Configurer, history::FileHistory, CompletionType, Editor};
 
 use crate::completion_helper::MyHelper;
 
@@ -11,7 +11,7 @@ pub struct Shell {
     pub read_line: Editor<MyHelper, FileHistory>,
     pub current_dir: PathBuf,
     pub prompt: String,
-    pub builtins: Vec<String>
+    pub builtins: Vec<String>,
 }
 pub struct Executable {
     pub name: String,
@@ -40,6 +40,7 @@ impl Shell {
     }
 
     fn get_executables(&mut self) {
+        
         if !self.executables.is_empty() {
             return;
         }
@@ -60,6 +61,4 @@ impl Shell {
             }
         }
     }
- 
-
 }
