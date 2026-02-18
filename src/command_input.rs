@@ -1,17 +1,11 @@
 use crate::parser::parse_input;
 use crate::{Shell, ShellAction};
 
-use std::fs::{File, OpenOptions};
-
 use is_executable::is_executable;
-use os_pipe::pipe;
-use std::io;
 use std::path::PathBuf;
 
-use crate::builtin::{change_directories, echo, exit, print_current_dir, type_command};
-use crate::utils::split_by_delimiter;
-use std::process::{Child, Command, Stdio};
 use crate::redirection::Redirection;
+use crate::utils::split_by_delimiter;
 
 #[derive(Debug)]
 
@@ -21,7 +15,7 @@ pub enum BuiltInCommand {
     Type(Vec<String>),
     CD(Vec<String>),
     PWD,
-    History(Vec<String>)
+    History(Vec<String>),
 }
 #[derive(Debug)]
 pub enum CommandType {
@@ -34,7 +28,6 @@ pub enum CommandType {
     Unknown(String),
 }
 
-
 #[derive(Debug)]
 pub struct Cmd {
     pub command_type: CommandType,
@@ -42,10 +35,7 @@ pub struct Cmd {
     pub redirect_std_out: Option<Redirection>,
     pub redirect_std_error: Option<Redirection>,
     pub child: Option<Box<Cmd>>,
-
 }
-
-
 
 impl Cmd {
     pub fn new(input: &str, shell: &Shell) -> Option<Self> {
@@ -89,12 +79,7 @@ impl Cmd {
         current_cmd
     }
 
-
-     fn get_command_type_from_cmd_name(
-        cmd: &str,
-        args: Vec<String>,
-        shell: &Shell,
-    ) -> CommandType {
+    fn get_command_type_from_cmd_name(cmd: &str, args: Vec<String>, shell: &Shell) -> CommandType {
         match cmd {
             "exit" => CommandType::Builtin(BuiltInCommand::Exit),
             "echo" => CommandType::Builtin(BuiltInCommand::Echo(args)),
@@ -126,7 +111,6 @@ impl Cmd {
             }
         }
     }
-
 
     pub fn command_not_found(&self) -> ShellAction {
         println!("{}: command not found", self.command_str);

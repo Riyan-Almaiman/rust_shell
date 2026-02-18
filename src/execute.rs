@@ -1,14 +1,14 @@
-use std::io::Write;
-use rustyline::history::History;
-use std::fs::{File, OpenOptions};
-use std::io;
-use std::path::PathBuf;
-use std::process::{Child, Command, Stdio};
-use os_pipe::pipe;
 use crate::builtin::{change_directories, echo, exit, print_current_dir, type_command};
 use crate::command_input::{BuiltInCommand, Cmd, CommandType};
 use crate::shell::{Shell, ShellAction};
 use crate::utils::write_to_dest;
+use os_pipe::pipe;
+use rustyline::history::History;
+use std::fs::{File, OpenOptions};
+use std::io;
+use std::io::{Read, Write};
+use std::path::PathBuf;
+use std::process::{Child, Command, Stdio};
 
 enum PipeReaderKind {
     Pipe(os_pipe::PipeReader),
@@ -16,8 +16,6 @@ enum PipeReaderKind {
 }
 
 impl Cmd {
-
-
     pub fn execute(&self, shell: &mut Shell) -> ShellAction {
         let pipeline = self.flatten();
 
@@ -78,10 +76,10 @@ impl Cmd {
 
                     if let Some(reader) = previous_reader.take() {
                         match reader {
-                           PipeReaderKind::Pipe(r) => {
+                            PipeReaderKind::Pipe(r) => {
                                 command.stdin(Stdio::from(r));
                             }
-                          PipeReaderKind::Child(r) => {
+                            PipeReaderKind::Child(r) => {
                                 command.stdin(Stdio::from(r));
                             }
                         }
@@ -142,116 +140,111 @@ impl Cmd {
         error: &mut dyn io::Write,
     ) -> ShellAction {
         match &self.command_type {
-            CommandType::Builtin(builtin) => return match builtin {
-                BuiltInCommand::Exit => exit(),
+            CommandType::Builtin(builtin) => {
+                return match builtin {
+                    BuiltInCommand::Exit => exit(),
 
-                BuiltInCommand::PWD => {
-                    print_current_dir(shell, output)
-                }
+                    BuiltInCommand::PWD => print_current_dir(shell, output),
 
-                BuiltInCommand::CD(args) => {
-                    let path = args.get(0).map(|s| s.as_str()).unwrap_or("~");
-                    change_directories(shell, path, Some(output), error)
-                }
+                    BuiltInCommand::CD(args) => {
+                        let path = args.get(0).map(|s| s.as_str()).unwrap_or("~");
+                        change_directories(shell, path, Some(output), error)
+                    }
 
-                BuiltInCommand::Echo(args) => {
-                    echo(args, output)
-                }
-                BuiltInCommand::Type(args) => {
-                    type_command(shell, args, output)
-                }
-                BuiltInCommand::History(args)=>
-
-                {
-
-                    let first_arg  = args.get(0).map(|s| s.as_str()).unwrap_or("0");
-                    let second_arg = args.get(1).map(|s| s.as_str()).unwrap_or("");
-                    match first_arg {
-                          "-r" => {
-                              if second_arg.is_empty() {
-                                  write_to_dest(error, "history: missing file operand");
-                                  return ShellAction::Continue;
-                              }
-                              let path = PathBuf::from(second_arg);
-                              if let Err(e) = shell.read_line.load_history(&path) {
-                                  write_to_dest(error, &format!("history: {}", e));
-                              }
-                              return ShellAction::Continue;
-                          }
-                         "-w" =>  {
-                             if second_arg.is_empty() {
-                                 write_to_dest(error, "history: missing file operand");
-                                 return ShellAction::Continue;
-                             }
-                             let path = PathBuf::from(second_arg);
-
-                             match File::create(&path) {
-                                 Ok(mut file) => {
-                                     for entry in shell.read_line.history().iter() {
-                                         if let Err(e) = writeln!(file, "{}", entry) {
-                                             write_to_dest(error, &format!("history: {}", e));
-                                             return ShellAction::Continue;
-                                         }
-                                     }
-                                 }
-                                 Err(e) => {
-                                     write_to_dest(error, &format!("history: {}", e));
-                                 }
-                             }
-                             return ShellAction::Continue;
-                         }
-                        "-a" =>  {
-                            if second_arg.is_empty() {
-                                write_to_dest(error, "history: missing file operand");
-                                return ShellAction::Continue;
-                            }
-                            let path = PathBuf::from(second_arg);
-                            let mut file = OpenOptions::new()
-                                .create(true)
-                                .append(true)
-                                .open(&path);
-
-                            match file {
-                                Ok(mut file) => {
-                                    for entry in shell.read_line.history().iter() {
-                                        if let Err(e) = writeln!(file, "{}", entry) {
-                                            write_to_dest(error, &format!("history: {}", e));
-                                            return ShellAction::Continue;
-                                        }
-                                    }
+                    BuiltInCommand::Echo(args) => echo(args, output),
+                    BuiltInCommand::Type(args) => type_command(shell, args, output),
+                    BuiltInCommand::History(args) => {
+                        let first_arg = args.get(0).map(|s| s.as_str()).unwrap_or("0");
+                        let second_arg = args.get(1).map(|s| s.as_str()).unwrap_or("");
+                        match first_arg {
+                            "-r" => {
+                                if second_arg.is_empty() {
+                                    write_to_dest(error, "history: missing file operand");
+                                    return ShellAction::Continue;
                                 }
-                                Err(e) => {
+                                let path = PathBuf::from(second_arg);
+                                if let Err(e) = shell.read_line.load_history(&path) {
                                     write_to_dest(error, &format!("history: {}", e));
                                 }
+                                return ShellAction::Continue;
                             }
-                            return ShellAction::Continue;
+                            "-w" => {
+                                if second_arg.is_empty() {
+                                    write_to_dest(error, "history: missing file operand");
+                                    return ShellAction::Continue;
+                                }
+
+                                let path = PathBuf::from(second_arg);
+
+                                match File::create(&path) {
+                                    Ok(mut file) => {
+                                        for entry in shell.read_line.history().iter() {
+                                            if let Err(e) = writeln!(file, "{}", entry) {
+                                                write_to_dest(error, &format!("history: {}", e));
+                                                return ShellAction::Continue;
+                                            }
+                                        }
+                                    }
+                                    Err(e) => {
+                                        write_to_dest(error, &format!("history: {}", e));
+                                    }
+                                }
+                                return ShellAction::Continue;
+                            }
+                            "-a" => {
+                                if second_arg.is_empty() {
+                                    write_to_dest(error, "history: missing file operand");
+                                    return ShellAction::Continue;
+                                }
+                                let path = PathBuf::from(second_arg);
+                                let mut file =
+                                    OpenOptions::new().create(true).append(true).open(&path);
+
+                                match file {
+                                    Ok(mut file) => {
+                                        let mut buffer = String::new();
+                                        let current_lines = file.read_to_string(&mut buffer);
+                                        let buffer = buffer.split("\n").collect::<Vec<&str>>();
+
+                                        for entry in shell.read_line.history().iter() {
+                                            if !buffer.contains(&entry.as_str()) {
+                                                if let Err(e) = writeln!(file, "{}", entry) {
+                                                    write_to_dest(
+                                                        error,
+                                                        &format!("history: {}", e),
+                                                    );
+                                                    return ShellAction::Continue;
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Err(e) => {
+                                        write_to_dest(error, &format!("history: {}", e));
+                                    }
+                                }
+                                return ShellAction::Continue;
+                            }
+                            _ => (),
                         }
-                        _ => ()
-
-                    }
-                    let n = first_arg.parse().unwrap_or(0);
-                    let history = shell.read_line.history();
-                    let len = history.len();
-                    let start = match n {
-                        0 => 0,
-                        n=> len.saturating_sub(n)
-                    };
-                    for (i, entry) in shell.read_line.history().iter().enumerate() {
-                        if i >= start {
-                            write_to_dest(output, &format!("{:>5}  {}", i + 1, entry));
+                        let n = first_arg.parse().unwrap_or(0);
+                        let history = shell.read_line.history();
+                        let len = history.len();
+                        let start = match n {
+                            0 => 0,
+                            n => len.saturating_sub(n),
+                        };
+                        for (i, entry) in shell.read_line.history().iter().enumerate() {
+                            if i >= start {
+                                write_to_dest(output, &format!("{:>5}  {}", i + 1, entry));
+                            }
                         }
+
+                        ShellAction::Continue
                     }
-
-                    ShellAction::Continue
-
-                }
-            },
+                };
+            }
 
             _ => ShellAction::Continue,
         }
     }
-
-    
-
-
 }
