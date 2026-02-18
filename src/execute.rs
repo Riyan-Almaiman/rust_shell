@@ -168,7 +168,7 @@ impl Cmd {
                     let start = len.saturating_sub(n);
 
                     for (index, entry) in shell.read_line.history().iter().skip(start).enumerate() {
-                    write_to_dest(output, format!("   {}  {}", index, entry).as_str());
+                    write_to_dest(output, format!("   {}  {}", index +1 + start, entry).as_str());
                 }
                     ShellAction::Continue
 
